@@ -6,4 +6,6 @@ fastapi==0.141.1
 uvicorn[standard]==0.52.3
 pydantic==2.13.4
 SQLAlchemy==2.0.23
-psycopg2-binary==2.9.5
+# 2.9.10 e a primeira serie com pacote pronto para ARM: no Mac M1/M2/M3
+# a 2.9.5 tentaria compilar do zero e o build quebrava.
+psycopg2-binary==2.9.10
