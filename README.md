@@ -274,3 +274,11 @@ Todo erro da API responde no mesmo formato, com um código próprio:
 
 Um código estável vale mais que uma mensagem bonita: quem integra com a
 API programa em cima do código, não do texto.
+
+---
+
+## 8. A licença
+
+Este projeto é **MIT** — pode usar, copiar, modificar e levar para o seu
+portfólio, inclusive em trabalho pago. O único pedido é manter o arquivo
+`LICENSE` junto quando você distribuir o código.
