@@ -1,0 +1,46 @@
+# O docker compose sobe a aplicacao e o banco juntos, com um comando so:
+#
+#     docker compose up
+#
+# Ele le o seu arquivo .env (aquele que voce copiou do .env.example).
+
+services:
+  api:
+    build:
+      context: .
+      target: api
+    container_name: bootcamp-api
+    ports:
+      # Se a porta 3000 ja estiver ocupada na sua maquina, coloque
+      # API_PORT=3001 (ou outra livre) no seu .env.
+      - "${API_PORT:-3000}:3000"
+    env_file: .env
+    environment:
+      # Dentro do compose, o banco atende pelo nome "db" — nao por localhost.
+      DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
+    volumes:
+      # Monta o codigo pra dentro do container: salvou o arquivo,
+      # a API recarrega sozinha (o --reload ali embaixo).
+      - ./src:/app
+    # --reload: salvou o arquivo, a API reinicia sozinha.
+    command: uvicorn app:app --host 0.0.0.0 --port 3000 --no-server-header --reload
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    build: ./database/.
+    container_name: bootcamp-db
+    environment:
+      POSTGRES_USER: bootcamp
+      POSTGRES_PASSWORD: bootcamp
+      POSTGRES_DB: bootcamp
+    ports:
+      # Mesma ideia: DB_PORT=5433 no .env se a 5432 estiver ocupada.
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      # A API so sobe depois que o banco responder de verdade.
+      test: ["CMD-SHELL", "pg_isready -U bootcamp -d bootcamp"]
+      interval: 3s
+      timeout: 3s
+      retries: 20

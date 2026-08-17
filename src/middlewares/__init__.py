@@ -1,0 +1,3 @@
+from middlewares.internal_token import register_internal_token_middleware
+from middlewares.request_logger import register_request_logger_middleware
+from middlewares.secure_headers import register_secure_headers_middleware

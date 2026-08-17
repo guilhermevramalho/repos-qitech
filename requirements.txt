@@ -1,0 +1,9 @@
+# Dependencias da aplicacao.
+# Cada linha fixa uma versao exata (o "==") pra que a sua maquina,
+# a do colega e a do servidor rodem exatamente o mesmo codigo.
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.3
+pydantic==2.13.4
+SQLAlchemy==2.0.23
+psycopg2-binary==2.9.5

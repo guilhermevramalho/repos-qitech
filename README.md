@@ -1,93 +1,153 @@
-# bootcamp-base-api
+# Bootcamp QI Tech — API boilerplate
 
+Projeto base do Bootcamp: uma API REST em **Python + FastAPI**, com banco
+**PostgreSQL**, rodando em **Docker**.
 
+Você não precisa saber programar para começar. Precisa ter o Docker
+instalado e vontade de mexer.
 
-## Getting started
+---
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## 1. Rodando pela primeira vez
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.qitech.com.br/Gilberto.oliveira/bootcamp-base-api.git
-git branch -M master
-git push -uf origin master
+```bash
+cp .env.example .env
+docker compose up
 ```
 
-## Integrate with your tools
+É isso. O Docker baixa o Python, sobe o banco, cria as tabelas e liga a
+API. Na primeira vez demora alguns minutos; depois é quase instantâneo.
 
-- [ ] [Set up project integrations](https://gitlab.qitech.com.br/Gilberto.oliveira/bootcamp-base-api/-/settings/integrations)
+Quando aparecer `Application startup complete`, abra no navegador:
 
-## Collaborate with your team
+### 👉 http://localhost:3000/docs
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Essa página é o **Swagger**. Ela não foi escrita por ninguém: o FastAPI
+gera a documentação lendo o próprio código. Cada rota tem um botão
+**Try it out** que dispara a requisição de verdade, ali mesmo, sem
+Postman e sem `curl`.
 
-## Test and Deploy
+Comece por ela. É o jeito mais rápido de entender o que a API faz.
 
-Use the built-in continuous integration in GitLab.
+> Se a porta 3000 ou a 5432 já estiver ocupada na sua máquina, abra o
+> `.env` e defina `API_PORT` / `DB_PORT` com portas livres.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+---
 
-***
+## 2. Rodando os testes
 
-# Editing this README
+Com a API de pé, em **outro terminal**:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest -v
+```
 
-## Suggestions for a good README
+Os testes conversam com a API **por HTTP**, exatamente como um cliente de
+verdade faria. Eles não espiam o código por dentro — não sabem que existe
+FastAPI, nem SQLAlchemy. Só sabem: "mandei isso, tem que voltar aquilo".
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Isso tem uma consequência bonita: **este projeto inteiro já foi reescrito
+de um framework para outro, e nenhum teste precisou mudar.** Quando o
+teste descreve o combinado em vez de descrever o código, ele sobrevive à
+reforma.
 
-## Name
-Choose a self-explaining name for your project.
+---
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+## 3. As pastas
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```
+src/
+  app.py           ← liga tudo: rotas, middlewares e tratamento de erro
+  database.py      ← a conexão com o banco
+  constants.py     ← as configurações, lidas do ambiente
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+  routers/         ← recebe a requisição HTTP e devolve a resposta
+  schemas/         ← o formato do JSON que entra (e o que é inválido)
+  controllers/     ← as regras de negócio: o que pode e o que não pode
+  repositories/    ← as conversas com o banco
+  models/          ← as tabelas, descritas em Python
+  dtos/            ← monta o formato do JSON que sai
+  errors/          ← os erros da API, cada um com seu código
+  middlewares/     ← o que acontece com TODA requisição
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+database/
+  database.sql     ← as tabelas, em SQL puro
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+tests/             ← os testes
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### Por que tanta pasta?
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Porque cada uma tem **um trabalho só**, e só conversa com a vizinha:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```
+requisição → router → controller → repository → banco
+                ↑          ↑
+            valida o    decide o
+             formato    que pode
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+O router não sabe SQL. O repository não sabe o que é uma regra de
+negócio. Quando você precisa trocar o banco, mexe numa pasta. Quando a
+regra muda, mexe na outra. É isso que permite um time inteiro trabalhar
+no mesmo projeto sem pisar no pé um do outro.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+---
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## 4. Configuração e senhas
 
-## License
-For open source projects, say how it is licensed.
+Toda configuração entra por **variável de ambiente** — nunca escrita no
+meio do código.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- `.env.example` → vai para o Git. Só tem valor de mentirinha.
+- `.env` → fica só na sua máquina. **Nunca** vai para o Git.
+
+Essa separação não é frescura. Senha commitada em repositório é uma das
+formas mais comuns de vazamento de dados no mundo real, e não tem
+desfazer: uma vez no histórico, está lá para sempre.
+
+---
+
+## 5. Autenticação
+
+As rotas de negócio pedem um cabeçalho:
+
+```
+INTERNAL-TOKEN: default_token
+```
+
+(o valor está no seu `.env`). Sem ele, a API responde **403**.
+
+Ficam abertas, de propósito: a rota raiz, o `/health_check` e o `/docs`.
+
+---
+
+## 6. Os códigos de erro
+
+Todo erro da API responde no mesmo formato, com um código próprio:
+
+```json
+{
+  "title": "Bad Request",
+  "description": "Field required in hello",
+  "translation": "Payload Invalido",
+  "code": "QIT000001"
+}
+```
+
+| Código      | Quando acontece                                  |
+|-------------|--------------------------------------------------|
+| `QIT000001` | o JSON enviado está fora do formato              |
+| `QIT000002` | faltou o `INTERNAL-TOKEN`, ou ele está errado    |
+| `QIT000010` | um parâmetro do endereço está inválido           |
+| `QIT000404` | essa rota não existe                             |
+| `QIT000405` | a rota existe, mas não aceita esse método        |
+| `QIT000500` | erro inesperado (o time é avisado)               |
+| `BAP000001` | a entidade procurada não existe                  |
+| `BAP000002` | a entidade já está num status final              |
+
+Um código estável vale mais que uma mensagem bonita: quem integra com a
+API programa em cima do código, não do texto.

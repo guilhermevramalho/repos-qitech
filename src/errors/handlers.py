@@ -1,0 +1,80 @@
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from errors.base_error import (
+    QIException,
+    InternalError,
+    InvalidParameter,
+    InvalidSchema,
+    MethodNotAllowed,
+    NotFoundResource,
+)
+from utils.logger import get_logger
+
+
+logger = get_logger(__name__)
+
+
+def qi_exception_to_response(exception: QIException) -> JSONResponse:
+    """Traduz um erro nosso para a resposta JSON que o cliente recebe.
+
+    Este e o unico lugar do projeto que sabe como um erro vira HTTP.
+    Trocar de framework significa reescrever esta funcao — e mais nada.
+    """
+    body = {
+        "title": exception.title,
+        "description": exception.description,
+        "translation": exception.translation,
+        "code": exception.code,
+    }
+    return JSONResponse(status_code=exception.http_status, content=body)
+
+
+def describe_validation_error(error: dict) -> str:
+    location = [str(part) for part in error.get("loc", []) if part not in ("body", "query")]
+    message = error.get("msg", "invalid value")
+
+    if location:
+        return f"{message} in {'.'.join(location)}"
+
+    return message
+
+
+def register_error_handlers(application: FastAPI) -> None:
+    """Ensina a aplicacao a responder cada tipo de erro."""
+
+    @application.exception_handler(QIException)
+    def handle_qi_exception(request: Request, exception: QIException) -> JSONResponse:
+        return qi_exception_to_response(exception)
+
+    @application.exception_handler(StarletteHTTPException)
+    def handle_http_exception(request: Request, exception: StarletteHTTPException) -> JSONResponse:
+        if exception.status_code == 404:
+            return qi_exception_to_response(NotFoundResource())
+
+        if exception.status_code == 405:
+            return qi_exception_to_response(MethodNotAllowed())
+
+        logger.error(f"HTTP {exception.status_code} em {request.url.path}: {exception.detail}")
+        return qi_exception_to_response(InternalError())
+
+    @application.exception_handler(RequestValidationError)
+    def handle_validation_error(request: Request, exception: RequestValidationError) -> JSONResponse:
+        errors = exception.errors()
+        first_error = errors[0] if errors else {}
+        description = describe_validation_error(first_error)
+        origin = first_error.get("loc", [""])[0]
+
+        # Erro no endereco (?page=-3) e erro no corpo do JSON sao
+        # problemas diferentes, e o cliente recebe codigos diferentes.
+        if origin in ("query", "path"):
+            return qi_exception_to_response(InvalidParameter(description))
+
+        return qi_exception_to_response(InvalidSchema(description))
+
+    @application.exception_handler(Exception)
+    def handle_unexpected_error(request: Request, exception: Exception) -> JSONResponse:
+        logger.exception(f"Erro inesperado em {request.method} {request.url.path}")
+        return qi_exception_to_response(InternalError())
