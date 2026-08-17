@@ -3,8 +3,32 @@
 Projeto base do Bootcamp: uma API REST em **Python + FastAPI**, com banco
 **PostgreSQL**, rodando em **Docker**.
 
-Você não precisa saber programar para começar. Precisa ter o Docker
-instalado e vontade de mexer.
+Você não precisa saber programar para começar. E não precisa instalar
+Python, banco de dados nem nada disso na sua máquina: **o Docker faz
+tudo** — inclusive rodar os testes.
+
+---
+
+## 0. O que você precisa ter instalado
+
+São duas coisas. Só duas.
+
+| O quê | Para quê | Como conferir |
+|---|---|---|
+| **Docker** (com o Docker Desktop no Mac/Windows) | roda a API, o banco e os testes | `docker compose version` |
+| **Git** | trazer o projeto para o seu computador | `git --version` |
+
+Abra o terminal e rode os dois comandos da coluna da direita. Se ambos
+responderem um número de versão, você está pronto.
+
+> **`docker compose version` deu erro?** Sua instalação do Docker é
+> antiga demais (ou o Docker não está ligado). No Mac e no Windows,
+> abra o **Docker Desktop** e espere a baleia parar de se mexer. Se o
+> comando continuar falhando, reinstale pelo site oficial —
+> o `docker compose` (com **espaço**) vem junto desde 2022.
+
+Nada mais é necessário. Se em algum momento este projeto pedir que você
+instale outra coisa, é um bug do projeto — avise a gente.
 
 ---
 
@@ -29,20 +53,39 @@ Postman e sem `curl`.
 
 Comece por ela. É o jeito mais rápido de entender o que a API faz.
 
-> Se a porta 3000 ou a 5432 já estiver ocupada na sua máquina, abra o
-> `.env` e defina `API_PORT` / `DB_PORT` com portas livres.
+Para desligar tudo: `Ctrl+C` no terminal e depois
+
+```bash
+docker compose down
+```
 
 ---
 
 ## 2. Rodando os testes
 
-Com a API de pé, em **outro terminal**:
+**Um comando, em outro terminal, dentro da pasta do projeto:**
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-pytest -v
+docker compose run --rm tests
+```
+
+Não precisa ter a API de pé antes: se ela não estiver, este mesmo
+comando sobe o banco, sobe a API, espera os dois responderem e só então
+roda a suíte. Não precisa de Python instalado, nem de `pip`, nem de
+cliente de banco — tudo isso vive dentro do container de testes.
+
+O resultado sai assim:
+
+```
+tests/integration/test_healthcheck.py::TestHealthCheck::test_home PASSED
+...
+============================== 14 passed in 0.62s ==============================
+```
+
+Para rodar só um arquivo (ou só um teste), acrescente o caminho:
+
+```bash
+docker compose run --rm tests pytest -v tests/integration/test_healthcheck.py
 ```
 
 Os testes conversam com a API **por HTTP**, exatamente como um cliente de
@@ -54,9 +97,89 @@ de um framework para outro, e nenhum teste precisou mudar.** Quando o
 teste descreve o combinado em vez de descrever o código, ele sobrevive à
 reforma.
 
+> **Escreveu um teste novo?** Rode o mesmo comando. O `tests/` da sua
+> máquina está montado dentro do container: o que você salva agora vale
+> no próximo comando, sem reconstruir imagem nenhuma.
+
+### Atalho para quem já tem Python 3.11 (opcional)
+
+Roda um pouco mais rápido, e o erro aparece direto no seu editor. Exige
+Python na sua máquina — por isso é atalho, não o caminho principal:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+Aqui a API **precisa** estar de pé (`docker compose up` em outro
+terminal), e o `DATABASE_URL` do seu `.env` precisa apontar para a porta
+em que o banco está publicado na sua máquina.
+
 ---
 
-## 3. As pastas
+## 3. Quando dá errado
+
+Os quatro tropeços mais comuns, com a mensagem que você vai ver:
+
+### `port is already allocated`
+
+```
+Bind for 0.0.0.0:5432 failed: port is already allocated
+```
+
+Outro programa da sua máquina já usa aquela porta (é comum ter um
+Postgres instalado ocupando a 5432). Não precisa descobrir qual: abra o
+`.env` e escolha outras portas livres —
+
+```
+API_PORT=3001
+DB_PORT=5433
+```
+
+— e suba de novo. Agora a API atende em http://localhost:3001/docs.
+As duas linhas já estão no seu `.env`, comentadas: basta tirar o `#`.
+
+### `failed to connect to the docker API`
+
+```
+failed to connect to the docker API at unix:///var/run/docker.sock;
+check if the path is correct and if the daemon is running
+```
+
+O Docker não está ligado. Abra o **Docker Desktop** (Mac/Windows) e
+espere ficar verde. No Linux: `sudo systemctl start docker`.
+
+### `env file ... .env not found`
+
+Faltou o primeiro comando do passo 1:
+
+```bash
+cp .env.example .env
+```
+
+### `Nao consegui falar com a API` / `Nao consegui falar com o banco`
+
+Só aparece no atalho local (fora do Docker). Quer dizer que a API ou o
+banco não estão de pé, ou que a porta no seu `.env` não é a que eles
+estão usando. Suba com `docker compose up` e confira as portas.
+
+### Nada disso resolveu?
+
+Este comando desliga e limpa **este** projeto (containers, rede e o
+banco com tudo dentro) para você recomeçar do zero:
+
+```bash
+docker compose down -v
+docker compose up
+```
+
+Para ver o que a API está dizendo enquanto roda: `docker compose logs -f api`.
+
+---
+
+## 4. As pastas
 
 ```
 src/
@@ -97,7 +220,7 @@ no mesmo projeto sem pisar no pé um do outro.
 
 ---
 
-## 4. Configuração e senhas
+## 5. Configuração e senhas
 
 Toda configuração entra por **variável de ambiente** — nunca escrita no
 meio do código.
@@ -111,7 +234,7 @@ desfazer: uma vez no histórico, está lá para sempre.
 
 ---
 
-## 5. Autenticação
+## 6. Autenticação
 
 As rotas de negócio pedem um cabeçalho:
 
@@ -125,7 +248,7 @@ Ficam abertas, de propósito: a rota raiz, o `/health_check` e o `/docs`.
 
 ---
 
-## 6. Os códigos de erro
+## 7. Os códigos de erro
 
 Todo erro da API responde no mesmo formato, com um código próprio:
 
