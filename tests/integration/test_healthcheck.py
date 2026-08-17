@@ -1,3 +1,4 @@
+from tests.utils import INTERNAL_TOKEN
 from tests.utils.requisition import ClientRequisition
 
 
@@ -19,7 +20,7 @@ class TestHealthCheck:
         response = ClientRequisition.send(
             "PUT",
             "/api_boilerplate/sample",
-            headers={"INTERNAL-TOKEN": "default_token"},
+            headers={"INTERNAL-TOKEN": INTERNAL_TOKEN},
         )
         assert response.response_status == 404
         assert response.response_json["code"] == "QIT000404"

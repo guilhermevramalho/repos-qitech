@@ -2,6 +2,10 @@
 #
 #     docker compose up
 #
+# E roda a suite de testes com outro:
+#
+#     docker compose run --rm tests
+#
 # Ele le o seu arquivo .env (aquele que voce copiou do .env.example).
 
 services:
@@ -9,7 +13,6 @@ services:
     build:
       context: .
       target: api
-    container_name: bootcamp-api
     ports:
       # Se a porta 3000 ja estiver ocupada na sua maquina, coloque
       # API_PORT=3001 (ou outra livre) no seu .env.
@@ -24,13 +27,21 @@ services:
       - ./src:/app
     # --reload: salvou o arquivo, a API reinicia sozinha.
     command: uvicorn app:app --host 0.0.0.0 --port 3000 --no-server-header --reload
+    healthcheck:
+      # "Subiu" nao e a mesma coisa que "ja responde". Quem espera por
+      # isto e o servico de testes, logo abaixo: sem esta checagem, o
+      # primeiro teste bateria numa porta que ainda nao atende.
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:3000/api_boilerplate/health_check\")'"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
     depends_on:
       db:
         condition: service_healthy
 
   db:
     build: ./database/.
-    container_name: bootcamp-db
     environment:
       POSTGRES_USER: bootcamp
       POSTGRES_PASSWORD: bootcamp
@@ -44,3 +55,37 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  # Os testes rodam DENTRO do Docker, num container que ja tem Python e
+  # pytest instalados. Voce nao precisa de nada disso na sua maquina:
+  #
+  #     docker compose run --rm tests
+  #
+  # O "profiles" abaixo mantem este servico fora do "docker compose up":
+  # ele so entra em cena quando voce pede os testes.
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      target: tests
+    env_file: .env
+    environment:
+      # De dentro da rede do compose, a API e o banco atendem pelo NOME
+      # do servico (api, db) e pela porta de dentro do container (3000,
+      # 5432) — as portas do seu .env sao as da sua maquina, e aqui elas
+      # nao valem. Por isso estas quatro linhas mandam no .env.
+      APP_ENV: test
+      DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
+      SERVER_LOCALHOST: api
+      API_PORT: "3000"
+      # O cache do pytest fica dentro do container, nao na sua pasta.
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTEST_ADDOPTS: "-o cache_dir=/tmp/pytest_cache"
+    volumes:
+      # Teste que voce escrever agora roda ja no proximo comando,
+      # sem precisar montar a imagem de novo.
+      - ./tests:/workspace/tests
+      - ./database:/workspace/database
+    depends_on:
+      api:
+        condition: service_healthy

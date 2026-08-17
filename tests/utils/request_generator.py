@@ -1,4 +1,9 @@
+from os import environ
+
 from tests.utils.requisition import ClientRequisition, BaseConnectorResponse
+
+
+INTERNAL_TOKEN = environ.get("INTERNAL_TOKEN", "default_token")
 
 
 class RequestGenerator:
@@ -8,7 +13,7 @@ class RequestGenerator:
             "POST",
             "/api_boilerplate/sample_entity",
             payload=sample_entity_payload,
-            headers={"INTERNAL-TOKEN": "default_token"},
+            headers={"INTERNAL-TOKEN": INTERNAL_TOKEN},
         )
 
         return response.response_status, response.response_json
@@ -18,7 +23,7 @@ class RequestGenerator:
         response = ClientRequisition.send(
             "GET",
             f"/api_boilerplate/sample_entity/{sample_entity_key}",
-            headers={"INTERNAL-TOKEN": "default_token"},
+            headers={"INTERNAL-TOKEN": INTERNAL_TOKEN},
         )
         return response.response_status, response.response_json
 
@@ -28,7 +33,7 @@ class RequestGenerator:
             "PUT",
             f"/api_boilerplate/sample_entity/{sample_entity_key}",
             payload=update_payload,
-            headers={"INTERNAL-TOKEN": "default_token"},
+            headers={"INTERNAL-TOKEN": INTERNAL_TOKEN},
         )
         return response.response_status, response.response_json
 
@@ -37,13 +42,13 @@ class RequestGenerator:
         response = ClientRequisition.send(
             "PUT",
             f"/api_boilerplate/webhook/sample_entity/{sample_entity_key}/increment_counter",
-            headers={"INTERNAL-TOKEN": "default_token"},
+            headers={"INTERNAL-TOKEN": INTERNAL_TOKEN},
         )
         return response.response_status, response.response_json
 
     @staticmethod
     def GET_sample_entities(params: dict = None) -> BaseConnectorResponse:
         response = ClientRequisition.send(
-            "GET", "/api_boilerplate/sample_entities", headers={"INTERNAL-TOKEN": "default_token"}, query_params=params
+            "GET", "/api_boilerplate/sample_entities", headers={"INTERNAL-TOKEN": INTERNAL_TOKEN}, query_params=params
         )
         return response.response_status, response.response_json

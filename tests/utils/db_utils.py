@@ -1,6 +1,8 @@
-import subprocess
 from os import environ
-from urllib.parse import urlparse, unquote
+from pathlib import Path
+
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 
 
 RESET_QUERIES = [
@@ -10,45 +12,52 @@ RESET_QUERIES = [
     "GRANT ALL ON SCHEMA public TO public;",
 ]
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SCHEMA_FILE = PROJECT_ROOT / "database" / "database.sql"
+
+MISSING_DATABASE_URL = (
+    "A variavel DATABASE_URL nao esta definida.\n"
+    "Copie o arquivo de exemplo antes de rodar os testes:  cp .env.example .env"
+)
+
+DATABASE_OFFLINE = (
+    "Nao consegui falar com o banco em {host}:{port}.\n"
+    "Ele precisa estar de pe pros testes rodarem. Suba com:  docker compose up\n"
+    "Se ele ja esta de pe, confira a porta na DATABASE_URL do seu .env."
+)
+
 
 class DbUtils:
     """Limpa o banco entre os testes e recria as tabelas do zero.
 
     Cada teste comeca com o banco vazio: assim um teste nunca depende
     do que outro deixou pra tras.
+
+    A limpeza acontece pela mesma conexao que a aplicacao usa (a
+    DATABASE_URL), e nao por um programa externo: quem tem Docker
+    rodando ja tem tudo que precisa.
     """
 
     @staticmethod
-    def connection_settings() -> dict:
-        url = urlparse(environ["DATABASE_URL"])
-        return {
-            "host": url.hostname,
-            "port": str(url.port or 5432),
-            "user": unquote(url.username or ""),
-            "password": unquote(url.password or ""),
-            "database": (url.path or "/").lstrip("/"),
-        }
+    def database_url() -> str:
+        url = environ.get("DATABASE_URL")
+        if not url:
+            raise RuntimeError(MISSING_DATABASE_URL)
 
-    @staticmethod
-    def run_psql(settings: dict, arguments: list) -> None:
-        command = [
-            "psql",
-            "-h",
-            settings["host"],
-            "-p",
-            settings["port"],
-            "-U",
-            settings["user"],
-            settings["database"],
-        ]
-        command.extend(arguments)
-        subprocess.run(command, env={"PGPASSWORD": settings["password"], "PATH": environ.get("PATH", "")}, check=True)
+        return url
 
     @staticmethod
     def rollback() -> None:
-        settings = DbUtils.connection_settings()
+        engine = create_engine(DbUtils.database_url(), isolation_level="AUTOCOMMIT")
 
-        for query in RESET_QUERIES:
-            DbUtils.run_psql(settings, ["--command", query])
+        try:
+            with engine.connect() as connection:
+                for query in RESET_QUERIES:
+                    connection.exec_driver_sql(query)
 
-        DbUtils.run_psql(settings, ["-f", "database/database.sql"])
+                connection.exec_driver_sql(SCHEMA_FILE.read_text())
+        except OperationalError:
+            message = DATABASE_OFFLINE.format(host=engine.url.host, port=engine.url.port)
+            raise RuntimeError(message) from None
+        finally:
+            engine.dispose()
