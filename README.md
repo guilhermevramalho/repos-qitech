@@ -221,6 +221,14 @@ negócio. Quando você precisa trocar o banco, mexe numa pasta. Quando a
 regra muda, mexe na outra. É isso que permite um time inteiro trabalhar
 no mesmo projeto sem pisar no pé um do outro.
 
+Isso responde ao "por quê". Falta a outra metade — **"onde eu mexo
+quando quero fazer X?"** —, e ela está em
+**[docs/como-o-projeto-e-organizado.md](docs/como-o-projeto-e-organizado.md)**:
+o caminho de uma requisição arquivo por arquivo, o que cada pasta pode e
+não pode, e uma tabela de "quero fazer isto → mexo aqui". São dez
+minutos de leitura, feitos para um momento com calma — não para o meio
+da aula.
+
 ---
 
 ## 5. Configuração e senhas
