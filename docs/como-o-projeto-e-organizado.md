@@ -34,7 +34,8 @@ Este é o `POST /sample_entity`, que cria uma entidade:
         ↓
       banco
         ↓
-  src/dtos/            monta o JSON que volta
+  src/dtos/            traduz o objeto do banco no formato da resposta
+        ↓              (a forma dessa resposta está em src/schemas/)
         ↓
   resposta sai
 ```
@@ -54,11 +55,11 @@ este texto.
 | Pasta | Pode | Não pode |
 |---|---|---|
 | `routers/` | receber a requisição, chamar **um** controller, devolver a resposta | saber SQL, decidir regra de negócio |
-| `schemas/` | dizer qual JSON é aceito, e recusar o que não é | falar com banco, decidir regra |
+| `schemas/` | dizer qual JSON é aceito na entrada (e recusar o que não é) e qual é a forma da resposta | falar com banco, decidir regra |
 | `controllers/` | decidir o que pode e o que não pode, chamar repositories, salvar (`commit`) | escrever consulta, saber que existe HTTP |
 | `repositories/` | buscar, criar e atualizar no banco | decidir se aquilo era permitido |
 | `models/` | descrever as tabelas em Python | ter regra dentro |
-| `dtos/` | montar o dicionário que vira a resposta | buscar coisa no banco |
+| `dtos/` | transformar o objeto do banco no schema de resposta | buscar coisa no banco, decidir a forma da resposta |
 | `errors/` | definir cada erro: código, mensagem e status HTTP | ter regra de negócio dentro |
 | `middlewares/` | fazer algo em **toda** requisição (token, log, cabeçalho) | conhecer uma rota específica |
 | `utils/` | ferramenta de uso geral — aqui, só o logger | virar o depósito do que não se sabe onde pôr |
@@ -78,7 +79,7 @@ isso não é regra — é jeito de buscar.
 | Quero... | Mexo em | Na ordem |
 |---|---|---|
 | **aceitar um campo novo** no JSON de entrada | `src/schemas/sample_entity.py` | se o campo vai para o banco, também `database/database.sql` e `src/models/` |
-| **mudar o que a resposta devolve** | `src/dtos/sample_entity_dto.py` | — |
+| **mudar o que a resposta devolve** | `src/schemas/sample_entity.py` (declarar o campo) | depois `src/dtos/sample_entity_dto.py`, para preenchê-lo |
 | **criar uma rota nova** numa entidade que já existe | `src/routers/sample_entity.py` | e o método no controller, se a regra for nova |
 | **mudar uma regra** ("não pode X") | `src/controllers/sample_entity_controller.py` | e um erro novo em `src/errors/custom_errors.py`, se precisar |
 | **consultar o banco de outro jeito** (filtrar, ordenar, contar) | `src/repositories/sample_entity_repository.py` | o controller chama o método novo |
@@ -133,15 +134,30 @@ aquele em que ninguém mais encontra nada.
 
 ---
 
-## 5. Uma costura à mostra
+## 5. Schemas e DTOs: forma e tradução
 
-Honestidade sobre o código que você tem na mão: `schemas/` e `dtos/`
-falam os dois de formato — o primeiro é o que o FastAPI conhece (valida
-a entrada e monta o `/docs`), o segundo é o dicionário que o nosso
-código monta na saída. Só que a resposta do `POST /sample_entity` está
-descrita **nos dois**: em `SampleEntityKeyResponse` (`schemas/`) e em
-`only_obj_key` (`dtos/`).
+Duas pastas falam de formato, e é fácil confundi-las. A divisão é
+esta: **o `schemas/` diz qual é a forma, o `dtos/` faz a
+transformação.** Ou, em uma frase: o repository traz o modelo do
+banco; o DTO transforma no que o mundo vê.
 
-Não é erro, e não precisa consertar. Guarde como sintoma: quando duas
-pastas descrevem a mesma coisa, um dia alguém muda uma e esquece a
-outra. Perceber isso já é trabalho de gente que programa.
+Abra os três arquivos e a diferença fica óbvia:
+
+- `src/models/sample_entity.py` é a **tabela**: o `hello` está
+  escondido dentro de uma coluna JSON, e o status é um número
+  apontando para outra tabela.
+- `src/schemas/sample_entity.py` é a **resposta**: `hello` e `status`
+  viram campos planos, com nome de gente.
+- `src/dtos/sample_entity_dto.py` é a **ponte**: o `to_response` recebe
+  o objeto do banco e devolve um `SampleEntityResponse` — o schema, não
+  um dicionário solto.
+
+Campo novo na resposta? Declare no `schemas/`, preencha no `dtos/`.
+Nenhum outro arquivo precisa saber.
+
+É esse schema que cada rota anuncia no `response_model=`, e é dele que
+o `/docs` tira o formato da resposta que você vê antes de disparar a
+requisição. Uma consequência que vale conhecer: o FastAPI devolve
+**apenas** os campos declarados ali. Guardou um campo no banco e
+esqueceu de declará-lo? Ele some da resposta em silêncio — quando um
+dado sumir no caminho, comece procurando aqui.

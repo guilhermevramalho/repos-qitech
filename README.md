@@ -191,11 +191,11 @@ src/
   constants.py     ← as configurações, lidas do ambiente
 
   routers/         ← recebe a requisição HTTP e devolve a resposta
-  schemas/         ← o formato do JSON que entra (e o que é inválido)
+  schemas/         ← o formato do JSON que entra e do que sai
   controllers/     ← as regras de negócio: o que pode e o que não pode
   repositories/    ← as conversas com o banco
   models/          ← as tabelas, descritas em Python
-  dtos/            ← monta o formato do JSON que sai
+  dtos/            ← traduz o objeto do banco no JSON que sai
   errors/          ← os erros da API, cada um com seu código
   middlewares/     ← o que acontece com TODA requisição
 
