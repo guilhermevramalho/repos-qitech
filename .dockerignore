@@ -21,7 +21,7 @@ __pycache__
 htmlcov
 
 # Segredo NUNCA entra na imagem. As variaveis chegam por ambiente,
-# na hora de rodar (olha o env_file no docker-compose.yml).
+# na hora de rodar (olha o "environment" no docker-compose.yml).
 .env
 .env.*
 !.env.example
