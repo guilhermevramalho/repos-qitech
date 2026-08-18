@@ -13,8 +13,8 @@ INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN")
 # A documentacao entra aqui de proposito — ela e o cartao de visita da
 # API, e serve justamente pra quem ainda nao tem token nenhum.
 BYPASS_ENDPOINTS = [
-    "/api_boilerplate/",
-    "/api_boilerplate/health_check",
+    "/",
+    "/health_check",
     "/docs",
     "/docs/oauth2-redirect",
     "/openapi.json",

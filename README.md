@@ -1,4 +1,4 @@
-# Bootcamp QI Tech — API boilerplate
+# Bootcamp QI Tech — projeto base da API
 
 Projeto base do Bootcamp: uma API REST em **Python + FastAPI**, com banco
 **PostgreSQL**, rodando em **Docker**.

@@ -12,8 +12,6 @@ from routers import health_check_router, sample_entity_router
 from utils.logger import setup_logging
 
 
-API_PREFIX = "/api_boilerplate"
-
 DESCRIPTION = """
 API de exemplo do Bootcamp QI Tech.
 
@@ -38,8 +36,11 @@ def create_app() -> FastAPI:
         redoc_url=None,
     )
 
-    application.include_router(health_check_router, prefix=API_PREFIX)
-    application.include_router(sample_entity_router, prefix=API_PREFIX)
+    # As rotas ficam na raiz: o que o router declara como "/sample_entity"
+    # atende em http://localhost:3000/sample_entity, sem nada na frente.
+    # Router novo que voce criar entra aqui, na mesma linha de baixo.
+    application.include_router(health_check_router)
+    application.include_router(sample_entity_router)
 
     # Middleware e uma camada por fora da aplicacao: toda requisicao
     # atravessa todas elas na ida, e todas de novo na volta.

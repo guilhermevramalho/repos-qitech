@@ -31,7 +31,7 @@ services:
       # "Subiu" nao e a mesma coisa que "ja responde". Quem espera por
       # isto e o servico de testes, logo abaixo: sem esta checagem, o
       # primeiro teste bateria numa porta que ainda nao atende.
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:3000/api_boilerplate/health_check\")'"]
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:3000/health_check\")'"]
       interval: 3s
       timeout: 5s
       retries: 20
