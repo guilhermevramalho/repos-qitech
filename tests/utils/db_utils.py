@@ -17,7 +17,8 @@ SCHEMA_FILE = PROJECT_ROOT / "database" / "database.sql"
 
 MISSING_DATABASE_URL = (
     "A variavel DATABASE_URL nao esta definida.\n"
-    "Copie o arquivo de exemplo antes de rodar os testes:  cp .env.example .env"
+    "Rodando com 'docker compose run --rm tests' ela ja vem preenchida.\n"
+    "Fora do Docker, copie o arquivo de exemplo:  cp .env.example .env"
 )
 
 DATABASE_OFFLINE = (

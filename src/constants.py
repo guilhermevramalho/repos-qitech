@@ -32,5 +32,6 @@ def check_variables():
     if missing:
         raise EnvironmentError(
             f"Faltam variaveis de ambiente: {', '.join(missing)}. "
-            "Copie o .env.example para .env e preencha os valores."
+            "Rodando com 'docker compose up' elas ja vem preenchidas. "
+            "Fora do Docker, copie o .env.example para .env."
         )

@@ -6,7 +6,14 @@
 #
 #     docker compose run --rm tests
 #
-# Ele le o seu arquivo .env (aquele que voce copiou do .env.example).
+# Nao precisa criar arquivo nenhum antes: cada configuracao abaixo tem um
+# valor padrao, escrito no proprio ${VARIAVEL:-padrao}. Le-se assim:
+# "use o que estiver na variavel VARIAVEL; se ela nao existir, use padrao".
+#
+# O .env continua valendo, e agora e OPCIONAL: se voce criar um (copiando
+# o .env.example), o compose le esse arquivo e o que estiver la ganha do
+# padrao. E o jeito de trocar uma porta ocupada ou o token, sem editar
+# este arquivo.
 
 services:
   api:
@@ -17,10 +24,16 @@ services:
       # Se a porta 3000 ja estiver ocupada na sua maquina, coloque
       # API_PORT=3001 (ou outra livre) no seu .env.
       - "${API_PORT:-3000}:3000"
-    env_file: .env
     environment:
       # Dentro do compose, o banco atende pelo nome "db" — nao por localhost.
+      # Por isso esta linha nao tem padrao pra sobrescrever: aqui dentro o
+      # endereco do banco e sempre este.
       DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
+      APP_ENV: ${APP_ENV:-local}
+      SERVICE_NAME: ${SERVICE_NAME:-bootcamp-api}
+      # A senha que protege os endpoints internos. O padrao vale pra
+      # estudar; num sistema de verdade, isso nunca teria valor padrao.
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
     volumes:
       # Monta o codigo pra dentro do container: salvou o arquivo,
       # a API recarrega sozinha (o --reload ali embaixo).
@@ -68,16 +81,18 @@ services:
     build:
       context: .
       target: tests
-    env_file: .env
     environment:
       # De dentro da rede do compose, a API e o banco atendem pelo NOME
       # do servico (api, db) e pela porta de dentro do container (3000,
-      # 5432) — as portas do seu .env sao as da sua maquina, e aqui elas
-      # nao valem. Por isso estas quatro linhas mandam no .env.
+      # 5432) — as portas da sua maquina nao valem aqui. Por isso estas
+      # quatro linhas sao fixas, sem padrao pra sobrescrever.
       APP_ENV: test
       DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
       SERVER_LOCALHOST: api
       API_PORT: "3000"
+      # Esta, sim, acompanha a API: se voce trocar o token, os testes
+      # precisam mandar o token novo pra nao levarem 403.
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
       # O cache do pytest fica dentro do container, nao na sua pasta.
       PYTHONDONTWRITEBYTECODE: "1"
       PYTEST_ADDOPTS: "-o cache_dir=/tmp/pytest_cache"

@@ -35,12 +35,15 @@ instale outra coisa, é um bug do projeto — avise a gente.
 ## 1. Rodando pela primeira vez
 
 ```bash
-cp .env.example .env
 docker compose up
 ```
 
-É isso. O Docker baixa o Python, sobe o banco, cria as tabelas e liga a
-API. Na primeira vez demora alguns minutos; depois é quase instantâneo.
+Um comando. Só isso, e não precisa criar nem copiar arquivo nenhum
+antes: as configurações já vêm com valor padrão dentro do
+`docker-compose.yml`.
+
+O Docker baixa o Python, sobe o banco, cria as tabelas e liga a API. Na
+primeira vez demora alguns minutos; depois é quase instantâneo.
 
 Quando aparecer `Application startup complete`, abra no navegador:
 
@@ -107,21 +110,23 @@ Roda um pouco mais rápido, e o erro aparece direto no seu editor. Exige
 Python na sua máquina — por isso é atalho, não o caminho principal:
 
 ```bash
+cp .env.example .env
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 pytest -v
 ```
 
-Aqui a API **precisa** estar de pé (`docker compose up` em outro
-terminal), e o `DATABASE_URL` do seu `.env` precisa apontar para a porta
-em que o banco está publicado na sua máquina.
+Só aqui o `.env` **é** obrigatório: fora do Docker ninguém preenche as
+variáveis por você. Além dele, a API precisa estar de pé (`docker
+compose up` em outro terminal), e o `DATABASE_URL` do `.env` precisa
+apontar para a porta em que o banco está publicado na sua máquina.
 
 ---
 
 ## 3. Quando dá errado
 
-Os quatro tropeços mais comuns, com a mensagem que você vai ver:
+Os três tropeços mais comuns, com a mensagem que você vai ver:
 
 ### `port is already allocated`
 
@@ -130,16 +135,22 @@ Bind for 0.0.0.0:5432 failed: port is already allocated
 ```
 
 Outro programa da sua máquina já usa aquela porta (é comum ter um
-Postgres instalado ocupando a 5432). Não precisa descobrir qual: abra o
-`.env` e escolha outras portas livres —
+Postgres instalado ocupando a 5432). Não precisa descobrir qual: escolha
+outras portas livres. É pra isto que serve o `.env` —
+
+```bash
+cp .env.example .env
+```
+
+— e, dentro dele, tire o `#` da frente destas duas linhas e troque os
+números:
 
 ```
 API_PORT=3001
 DB_PORT=5433
 ```
 
-— e suba de novo. Agora a API atende em http://localhost:3001/docs.
-As duas linhas já estão no seu `.env`, comentadas: basta tirar o `#`.
+Suba de novo. Agora a API atende em http://localhost:3001/docs.
 
 ### `failed to connect to the docker API`
 
@@ -150,14 +161,6 @@ check if the path is correct and if the daemon is running
 
 O Docker não está ligado. Abra o **Docker Desktop** (Mac/Windows) e
 espere ficar verde. No Linux: `sudo systemctl start docker`.
-
-### `env file ... .env not found`
-
-Faltou o primeiro comando do passo 1:
-
-```bash
-cp .env.example .env
-```
 
 ### `Nao consegui falar com a API` / `Nao consegui falar com o banco`
 
@@ -225,12 +228,22 @@ no mesmo projeto sem pisar no pé um do outro.
 Toda configuração entra por **variável de ambiente** — nunca escrita no
 meio do código.
 
-- `.env.example` → vai para o Git. Só tem valor de mentirinha.
-- `.env` → fica só na sua máquina. **Nunca** vai para o Git.
+- **valor padrão** → escrito no `docker-compose.yml`, na forma
+  `${VARIAVEL:-padrao}`. É por causa dele que o `docker compose up`
+  funciona sem preparo nenhum.
+- `.env` → **opcional**, fica só na sua máquina e **nunca** vai para o
+  Git. Serve para sobrescrever um padrão (porta ocupada, outro token).
+- `.env.example` → vai para o Git, e é a cópia de onde você parte. Só
+  tem valor de mentirinha.
 
 Essa separação não é frescura. Senha commitada em repositório é uma das
 formas mais comuns de vazamento de dados no mundo real, e não tem
 desfazer: uma vez no histórico, está lá para sempre.
+
+Uma ressalva honesta: valor padrão de senha em arquivo versionado só
+vale porque aqui é um projeto de estudo, sem dado de ninguém. Em
+sistema de verdade, segredo não tem padrão — ele falta, e a aplicação
+se recusa a subir sem ele.
 
 ---
 
@@ -242,7 +255,8 @@ As rotas de negócio pedem um cabeçalho:
 INTERNAL-TOKEN: default_token
 ```
 
-(o valor está no seu `.env`). Sem ele, a API responde **403**.
+Sem ele, a API responde **403**. `default_token` é o valor padrão; para
+trocar, ponha `INTERNAL_TOKEN=outra_coisa` no seu `.env`.
 
 Ficam abertas, de propósito: a rota raiz, o `/health_check` e o `/docs`.
 
