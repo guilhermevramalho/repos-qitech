@@ -2,7 +2,7 @@ from errors import QIException
 
 
 class NotFoundSampleEntity(QIException):
-    code = "BAP000001"
+    code = "QIT001001"
 
     def __init__(self, sample_entity_key) -> None:
         title = "Entity not Found"
@@ -13,7 +13,7 @@ class NotFoundSampleEntity(QIException):
 
 
 class SampleEntityFinalStatus(QIException):
-    code = "BAP000002"
+    code = "QIT001002"
 
     def __init__(self, old_status, new_status) -> None:
         title = "Entity cannot change status"

@@ -283,11 +283,26 @@ Todo erro da API responde no mesmo formato, com um código próprio:
 | `QIT000404` | essa rota não existe                             |
 | `QIT000405` | a rota existe, mas não aceita esse método        |
 | `QIT000500` | erro inesperado (o time é avisado)               |
-| `BAP000001` | a entidade procurada não existe                  |
-| `BAP000002` | a entidade já está num status final              |
+| `QIT001001` | a entidade procurada não existe                  |
+| `QIT001002` | a entidade já está num status final              |
 
 Um código estável vale mais que uma mensagem bonita: quem integra com a
 API programa em cima do código, não do texto.
+
+Os números não são sorteados. Eles vêm em duas faixas:
+
+- **`QIT000…`** — os erros que **toda** API tem: JSON errado, sem token,
+  rota inexistente. Estão em `src/errors/base_error.py` e você não
+  precisa mexer neles.
+- **`QIT001…`** — os erros das **regras deste projeto**. Estão em
+  `src/errors/custom_errors.py`, e é aí que os seus entram: o próximo
+  livre é o `QIT001003`.
+
+Não repita um número. Se repetir, a API **não sobe** — tem uma checagem
+no start (`error_verification`, em `src/errors/base_error.py`) que
+procura código repetido e derruba a aplicação de propósito. Parecer
+chato agora é melhor que dois erros diferentes chegarem ao cliente com o
+mesmo código.
 
 ---
 

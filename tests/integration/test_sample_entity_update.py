@@ -46,4 +46,4 @@ class TestSampleEntityUpdate:
         payload = PayloadGenerator.create_new_status_payload("success")
         status, response = RequestGenerator.PUT_sample_entity(_key, payload)
         assert status == 409
-        assert response["code"] == "BAP000002"
+        assert response["code"] == "QIT001002"
