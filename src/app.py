@@ -38,7 +38,8 @@ def create_app() -> FastAPI:
 
     # As rotas ficam na raiz: o que o router declara como "/sample_entity"
     # atende em http://localhost:3000/sample_entity, sem nada na frente.
-    # Router novo que voce criar entra aqui, na mesma linha de baixo.
+    # Router novo que voce criar entra aqui embaixo, numa linha igual
+    # a estas duas.
     application.include_router(health_check_router)
     application.include_router(sample_entity_router)
 
