@@ -1,32 +1,38 @@
-from models import SampleEntity
 from typing import List
-from copy import deepcopy
+
+from models import SampleEntity
+from schemas import SampleEntityKeyResponse, SampleEntityResponse
 
 
 class SampleEntityDTO:
-    @staticmethod
-    def obj_to_dict(sample_entity: SampleEntity) -> dict:
+    """Traduz o objeto do banco no formato que a API devolve.
 
-        dto = deepcopy(sample_entity.sample_entity_data)
-        dto["status"] = sample_entity.status.enumerator
-        dto["sample_entity_key"] = sample_entity.sample_entity_key
-        dto["counter"] = sample_entity.counter
+    O repository entrega um `SampleEntity` — o espelho da tabela, com
+    coluna JSON e chave estrangeira. Nada disso sai para o cliente: aqui
+    esse objeto vira um dos schemas de resposta de `src/schemas/`.
 
-        return dto
-
-    @staticmethod
-    def list_obj_to_list_dict(sample_entities_list: List[dict]) -> dict:
-
-        sample_entities_dict_list = []
-
-        for asset in sample_entities_list:
-            sample_entities_dict_list.append(SampleEntityDTO.obj_to_dict(asset))
-        return sample_entities_dict_list
+    Quem descreve a FORMA e o schema; quem faz a TRANSFORMACAO e esta
+    classe. Campo novo na resposta se declara la, e se preenche aqui.
+    """
 
     @staticmethod
-    def only_obj_key(sample_entity: SampleEntity) -> dict:
+    def to_response(sample_entity: SampleEntity) -> SampleEntityResponse:
+        return SampleEntityResponse(
+            sample_entity_key=sample_entity.sample_entity_key,
+            hello=sample_entity.sample_entity_data["hello"],
+            status=sample_entity.status.enumerator,
+            counter=sample_entity.counter,
+        )
 
-        dto = dict()
-        dto["sample_entity_key"] = sample_entity.sample_entity_key
+    @staticmethod
+    def to_response_list(sample_entities: List[SampleEntity]) -> List[SampleEntityResponse]:
+        sample_entities_response = []
 
-        return dto
+        for sample_entity in sample_entities:
+            sample_entities_response.append(SampleEntityDTO.to_response(sample_entity))
+
+        return sample_entities_response
+
+    @staticmethod
+    def to_key_response(sample_entity: SampleEntity) -> SampleEntityKeyResponse:
+        return SampleEntityKeyResponse(sample_entity_key=sample_entity.sample_entity_key)

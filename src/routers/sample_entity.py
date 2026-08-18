@@ -6,6 +6,8 @@ from database import get_db
 from schemas import (
     CreateSampleEntityRequest,
     SampleEntityKeyResponse,
+    SampleEntityPageResponse,
+    SampleEntityResponse,
     UpdateSampleEntityStatusRequest,
 )
 
@@ -22,7 +24,7 @@ router = APIRouter(tags=["Sample Entity"])
 def create_sample_entity(
     payload: CreateSampleEntityRequest,
     db: Session = Depends(get_db),
-) -> dict:
+) -> SampleEntityKeyResponse:
     # Se o codigo chegou ate aqui, o payload JA foi validado pelo Pydantic.
     # A rota nao precisa checar nada: ela so chama a regra de negocio.
     controller = SampleEntityController(db)
@@ -32,12 +34,13 @@ def create_sample_entity(
 @router.get(
     "/sample_entity/{sample_entity_key}",
     status_code=status.HTTP_200_OK,
+    response_model=SampleEntityResponse,
     summary="Busca uma entidade pela chave",
 )
 def get_sample_entity(
     sample_entity_key: str,
     db: Session = Depends(get_db),
-) -> dict:
+) -> SampleEntityResponse:
     controller = SampleEntityController(db)
     return controller.get_by_key(sample_entity_key)
 
@@ -52,7 +55,7 @@ def update_sample_entity(
     sample_entity_key: str,
     payload: UpdateSampleEntityStatusRequest,
     db: Session = Depends(get_db),
-) -> dict:
+) -> SampleEntityKeyResponse:
     controller = SampleEntityController(db)
     return controller.update_status(sample_entity_key, payload.status)
 
@@ -74,6 +77,7 @@ def increment_counter(
 @router.get(
     "/sample_entities",
     status_code=status.HTTP_200_OK,
+    response_model=SampleEntityPageResponse,
     summary="Lista as entidades, de pagina em pagina",
 )
 def list_sample_entities(
@@ -81,15 +85,17 @@ def list_sample_entities(
     limit: int = Query(default=10, ge=0, le=100, description="Quantos itens por pagina"),
     page: int = Query(default=0, ge=0, description="Qual pagina, comecando do zero"),
     status_filter: str = Query(default=None, alias="status", description="Filtra por status"),
-) -> dict:
+) -> SampleEntityPageResponse:
     controller = SampleEntityController(db)
 
     offset = page * limit
     sample_entities_page = controller.get_list(limit, offset, status_filter)
 
-    return {
-        "data": sample_entities_page["sample_entities_list_dto"],
-        "limit": limit,
-        "page": page,
-        "is_last_page": sample_entities_page["is_last_page"],
-    }
+    # A paginacao e assunto do endereco (?limit=&page=), nao da entidade:
+    # por isso quem monta o envelope da pagina e a rota, e nao o DTO.
+    return SampleEntityPageResponse(
+        data=sample_entities_page["sample_entities_list_dto"],
+        limit=limit,
+        page=page,
+        is_last_page=sample_entities_page["is_last_page"],
+    )
