@@ -159,6 +159,23 @@ Isso é uma **regra de negócio**, não um erro de digitação: entidade que
 já terminou não volta atrás. A frase que decide isso mora em
 `src/controllers/sample_entity_controller.py`, e você pode ir ler.
 
+#### 6. Mandar um JSON torto
+
+```bash
+curl -X POST http://localhost:3000/sample_entity \
+  -H "INTERNAL-TOKEN: default_token" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+```json
+{"title":"Bad Request","description":"Field required in hello","translation":"Payload Invalido","code":"QIT000001"}
+```
+
+**400**, e nada foi criado. O `hello` é obrigatório, e quem recusou não
+foi a regra de negócio: foi o `src/schemas/`, antes da primeira linha da
+rota rodar. Pedido torto não chega a custar uma consulta ao banco.
+
 #### Esqueceu o `-H "INTERNAL-TOKEN: ..."`?
 
 A API responde **403** e nem chega a olhar o resto:
