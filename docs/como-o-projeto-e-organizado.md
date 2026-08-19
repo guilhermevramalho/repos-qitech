@@ -34,8 +34,7 @@ Este é o `POST /sample_entity`, que cria uma entidade:
         ↓
       banco
         ↓
-  src/dtos/            traduz o objeto do banco no formato da resposta
-        ↓              (a forma dessa resposta está em src/schemas/)
+  src/dtos/            traduz o objeto do banco no JSON da resposta
         ↓
   resposta sai
 ```
@@ -55,11 +54,11 @@ este texto.
 | Pasta | Pode | Não pode |
 |---|---|---|
 | `routers/` | receber a requisição, chamar **um** controller, devolver a resposta | saber SQL, decidir regra de negócio |
-| `schemas/` | dizer qual JSON é aceito na entrada (e recusar o que não é) e qual é a forma da resposta | falar com banco, decidir regra |
+| `schemas/` | dizer qual JSON é aceito na entrada, e recusar o que não é | falar com banco, decidir regra |
 | `controllers/` | decidir o que pode e o que não pode, chamar repositories, salvar (`commit`) | escrever consulta, saber que existe HTTP |
 | `repositories/` | buscar, criar e atualizar no banco | decidir se aquilo era permitido |
 | `models/` | descrever as tabelas em Python | ter regra dentro |
-| `dtos/` | transformar o objeto do banco no schema de resposta | buscar coisa no banco, decidir a forma da resposta |
+| `dtos/` | transformar o objeto do banco no dicionário que vira a resposta | buscar coisa no banco, decidir regra |
 | `errors/` | definir cada erro: código, mensagem e status HTTP | ter regra de negócio dentro |
 | `middlewares/` | fazer algo em **toda** requisição (token, log, cabeçalho) | conhecer uma rota específica |
 | `utils/` | ferramenta de uso geral — aqui, só o logger | virar o depósito do que não se sabe onde pôr |
@@ -79,7 +78,7 @@ isso não é regra — é jeito de buscar.
 | Quero... | Mexo em | Na ordem |
 |---|---|---|
 | **aceitar um campo novo** no JSON de entrada | `src/schemas/sample_entity.py` | se o campo vai para o banco, também `database/database.sql` e `src/models/` |
-| **mudar o que a resposta devolve** | `src/schemas/sample_entity.py` (declarar o campo) | depois `src/dtos/sample_entity_dto.py`, para preenchê-lo |
+| **mudar o que a resposta devolve** | `src/dtos/sample_entity_dto.py` | é o único lugar; se o campo ainda não existe no banco, antes disso `database/database.sql` e `src/models/` |
 | **criar uma rota nova** numa entidade que já existe | `src/routers/sample_entity.py` | e o método no controller, se a regra for nova |
 | **mudar uma regra** ("não pode X") | `src/controllers/sample_entity_controller.py` | e um erro novo em `src/errors/custom_errors.py`, se precisar |
 | **consultar o banco de outro jeito** (filtrar, ordenar, contar) | `src/repositories/sample_entity_repository.py` | o controller chama o método novo |
@@ -134,30 +133,30 @@ aquele em que ninguém mais encontra nada.
 
 ---
 
-## 5. Schemas e DTOs: forma e tradução
+## 5. Schemas e DTOs: o que entra e o que sai
 
-Duas pastas falam de formato, e é fácil confundi-las. A divisão é
-esta: **o `schemas/` diz qual é a forma, o `dtos/` faz a
-transformação.** Ou, em uma frase: o repository traz o modelo do
-banco; o DTO transforma no que o mundo vê.
+Duas pastas falam de formato, e é fácil confundi-las. A divisão é a
+direção: **o `schemas/` cuida do que ENTRA, o `dtos/` cuida do que
+SAI.**
 
-Abra os três arquivos e a diferença fica óbvia:
+- `src/schemas/sample_entity.py` descreve o JSON que o cliente manda.
+  Quem lê isso é o Pydantic, antes da primeira linha da rota rodar:
+  campo faltando, tipo errado ou campo a mais viram 400 ali mesmo.
+- `src/dtos/sample_entity_dto.py` faz o caminho de volta. O repository
+  entrega o objeto do banco; o DTO devolve um dicionário simples, e é
+  esse dicionário que vira o JSON da resposta.
 
-- `src/models/sample_entity.py` é a **tabela**: o `hello` está
-  escondido dentro de uma coluna JSON, e o status é um número
-  apontando para outra tabela.
-- `src/schemas/sample_entity.py` é a **resposta**: `hello` e `status`
-  viram campos planos, com nome de gente.
-- `src/dtos/sample_entity_dto.py` é a **ponte**: o `to_response` recebe
-  o objeto do banco e devolve um `SampleEntityResponse` — o schema, não
-  um dicionário solto.
+Abra os dois ao lado de `src/models/sample_entity.py` e a diferença
+fica óbvia. Na **tabela**, o `hello` está escondido dentro de uma
+coluna JSON e o status é um número apontando para outra tabela. Na
+**resposta**, os dois são campos planos, com nome de gente. Quem faz
+essa travessia é o DTO, e é por isso que ele existe.
 
-Campo novo na resposta? Declare no `schemas/`, preencha no `dtos/`.
-Nenhum outro arquivo precisa saber.
+Campo novo na resposta? Acrescente no `dtos/`. Nenhum outro arquivo
+precisa saber.
 
-É esse schema que cada rota anuncia no `response_model=`, e é dele que
-o `/docs` tira o formato da resposta que você vê antes de disparar a
-requisição. Uma consequência que vale conhecer: o FastAPI devolve
-**apenas** os campos declarados ali. Guardou um campo no banco e
-esqueceu de declará-lo? Ele some da resposta em silêncio — quando um
-dado sumir no caminho, comece procurando aqui.
+Uma consequência que vale conhecer: **o que o DTO monta é exatamente o
+que sai.** Não existe ninguém depois dele conferindo a forma — se um
+campo interno entrar naquele dicionário, ele vai para o cliente do
+mesmo jeito. Quando aparecer na resposta um dado que você não queria
+mostrar, comece procurando aqui.
