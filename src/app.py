@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from constants import SERVICE_NAME, check_variables
+from constants import check_variables
 from errors import register_error_handlers
 from errors.base_error import error_verification
 from middlewares import (
@@ -12,14 +12,6 @@ from routers import health_check_router, sample_entity_router
 from utils.logger import setup_logging
 
 
-DESCRIPTION = """
-API de exemplo do Bootcamp QI Tech.
-
-Esta pagina e gerada sozinha, a partir do codigo. Cada rota abaixo pode
-ser testada aqui mesmo, no botao **Try it out** — sem instalar nada.
-"""
-
-
 def create_app() -> FastAPI:
     """Monta a aplicacao, peca por peca.
 
@@ -28,12 +20,14 @@ def create_app() -> FastAPI:
       2. os middlewares    — o que acontece com TODA requisicao
       3. os error handlers — como cada erro vira uma resposta
     """
+    # Os tres None desligam a documentacao automatica: o FastAPI sabe
+    # gerar sozinho umas paginas descrevendo a API, e aqui elas nao
+    # existem. Pra ver o que cada rota responde, mande uma requisicao —
+    # tem exemplo pronto de cada uma no README.
     application = FastAPI(
-        title=SERVICE_NAME,
-        description=DESCRIPTION,
-        version="1.0.0",
-        docs_url="/docs",
+        docs_url=None,
         redoc_url=None,
+        openapi_url=None,
     )
 
     # As rotas ficam na raiz: o que o router declara como "/sample_entity"

@@ -9,15 +9,13 @@ SERVICE_NAME = os.environ.get("SERVICE_NAME", "bootcamp-api")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN")
 
-# Rotas publicas: nao exigem o header INTERNAL-TOKEN.
-# A documentacao entra aqui de proposito — ela e o cartao de visita da
-# API, e serve justamente pra quem ainda nao tem token nenhum.
+# Rotas publicas: nao exigem o header INTERNAL-TOKEN. Sao as duas que
+# precisam responder pra quem ainda nao tem token nenhum: a raiz, que
+# diz quem e este servico, e o health check, que o Docker consulta pra
+# saber se a API ja esta de pe.
 BYPASS_ENDPOINTS = [
     "/",
     "/health_check",
-    "/docs",
-    "/docs/oauth2-redirect",
-    "/openapi.json",
 ]
 
 REQUIRED_VARIABLES = ["DATABASE_URL", "INTERNAL_TOKEN"]
