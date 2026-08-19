@@ -1,38 +1,49 @@
+from copy import deepcopy
 from typing import List
 
 from models import SampleEntity
-from schemas import SampleEntityKeyResponse, SampleEntityResponse
 
 
 class SampleEntityDTO:
-    """Traduz o objeto do banco no formato que a API devolve.
+    """Traduz o objeto do banco no JSON que a API devolve.
 
     O repository entrega um `SampleEntity` — o espelho da tabela, com
     coluna JSON e chave estrangeira. Nada disso sai para o cliente: aqui
-    esse objeto vira um dos schemas de resposta de `src/schemas/`.
+    esse objeto vira um dicionario simples, e e esse dicionario que o
+    FastAPI transforma no JSON da resposta.
 
-    Quem descreve a FORMA e o schema; quem faz a TRANSFORMACAO e esta
-    classe. Campo novo na resposta se declara la, e se preenche aqui.
+    Compare com `src/models/sample_entity.py`, que descreve a TABELA:
+    la o `hello` esta escondido dentro de uma coluna JSON chamada
+    `sample_entity_data`, e o status e um numero apontando pra outra
+    tabela. Aqui os dois sao campos planos, com nome de gente.
+
+    Campo novo na resposta se acrescenta aqui — e so aqui.
     """
 
     @staticmethod
-    def to_response(sample_entity: SampleEntity) -> SampleEntityResponse:
-        return SampleEntityResponse(
-            sample_entity_key=sample_entity.sample_entity_key,
-            hello=sample_entity.sample_entity_data["hello"],
-            status=sample_entity.status.enumerator,
-            counter=sample_entity.counter,
-        )
+    def obj_to_dict(sample_entity: SampleEntity) -> dict:
+        # O deepcopy nao e frescura: sem ele, as tres linhas abaixo
+        # escreveriam DENTRO da coluna JSON do objeto que ainda esta na
+        # sessao do banco — e o proximo commit gravaria isso na tabela.
+        dto = deepcopy(sample_entity.sample_entity_data)
+        dto["status"] = sample_entity.status.enumerator
+        dto["sample_entity_key"] = sample_entity.sample_entity_key
+        dto["counter"] = sample_entity.counter
+
+        return dto
 
     @staticmethod
-    def to_response_list(sample_entities: List[SampleEntity]) -> List[SampleEntityResponse]:
-        sample_entities_response = []
+    def list_obj_to_list_dict(sample_entities_list: List[SampleEntity]) -> List[dict]:
+        sample_entities_dict_list = []
 
-        for sample_entity in sample_entities:
-            sample_entities_response.append(SampleEntityDTO.to_response(sample_entity))
+        for sample_entity in sample_entities_list:
+            sample_entities_dict_list.append(SampleEntityDTO.obj_to_dict(sample_entity))
 
-        return sample_entities_response
+        return sample_entities_dict_list
 
     @staticmethod
-    def to_key_response(sample_entity: SampleEntity) -> SampleEntityKeyResponse:
-        return SampleEntityKeyResponse(sample_entity_key=sample_entity.sample_entity_key)
+    def only_obj_key(sample_entity: SampleEntity) -> dict:
+        dto = dict()
+        dto["sample_entity_key"] = sample_entity.sample_entity_key
+
+        return dto

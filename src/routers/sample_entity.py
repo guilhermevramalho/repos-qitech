@@ -3,13 +3,7 @@ from sqlalchemy.orm import Session
 
 from controllers import SampleEntityController
 from database import get_db
-from schemas import (
-    CreateSampleEntityRequest,
-    SampleEntityKeyResponse,
-    SampleEntityPageResponse,
-    SampleEntityResponse,
-    UpdateSampleEntityStatusRequest,
-)
+from schemas import CreateSampleEntityRequest, UpdateSampleEntityStatusRequest
 
 
 router = APIRouter(tags=["Sample Entity"])
@@ -18,13 +12,12 @@ router = APIRouter(tags=["Sample Entity"])
 @router.post(
     "/sample_entity",
     status_code=status.HTTP_201_CREATED,
-    response_model=SampleEntityKeyResponse,
     summary="Cria uma entidade",
 )
 def create_sample_entity(
     payload: CreateSampleEntityRequest,
     db: Session = Depends(get_db),
-) -> SampleEntityKeyResponse:
+) -> dict:
     # Se o codigo chegou ate aqui, o payload JA foi validado pelo Pydantic.
     # A rota nao precisa checar nada: ela so chama a regra de negocio.
     controller = SampleEntityController(db)
@@ -34,13 +27,12 @@ def create_sample_entity(
 @router.get(
     "/sample_entity/{sample_entity_key}",
     status_code=status.HTTP_200_OK,
-    response_model=SampleEntityResponse,
     summary="Busca uma entidade pela chave",
 )
 def get_sample_entity(
     sample_entity_key: str,
     db: Session = Depends(get_db),
-) -> SampleEntityResponse:
+) -> dict:
     controller = SampleEntityController(db)
     return controller.get_by_key(sample_entity_key)
 
@@ -48,14 +40,13 @@ def get_sample_entity(
 @router.put(
     "/sample_entity/{sample_entity_key}",
     status_code=status.HTTP_202_ACCEPTED,
-    response_model=SampleEntityKeyResponse,
     summary="Muda o status de uma entidade",
 )
 def update_sample_entity(
     sample_entity_key: str,
     payload: UpdateSampleEntityStatusRequest,
     db: Session = Depends(get_db),
-) -> SampleEntityKeyResponse:
+) -> dict:
     controller = SampleEntityController(db)
     return controller.update_status(sample_entity_key, payload.status)
 
@@ -77,7 +68,6 @@ def increment_counter(
 @router.get(
     "/sample_entities",
     status_code=status.HTTP_200_OK,
-    response_model=SampleEntityPageResponse,
     summary="Lista as entidades, de pagina em pagina",
 )
 def list_sample_entities(
@@ -85,7 +75,7 @@ def list_sample_entities(
     limit: int = Query(default=10, ge=0, le=100, description="Quantos itens por pagina"),
     page: int = Query(default=0, ge=0, description="Qual pagina, comecando do zero"),
     status_filter: str = Query(default=None, alias="status", description="Filtra por status"),
-) -> SampleEntityPageResponse:
+) -> dict:
     controller = SampleEntityController(db)
 
     offset = page * limit
@@ -93,9 +83,9 @@ def list_sample_entities(
 
     # A paginacao e assunto do endereco (?limit=&page=), nao da entidade:
     # por isso quem monta o envelope da pagina e a rota, e nao o DTO.
-    return SampleEntityPageResponse(
-        data=sample_entities_page["sample_entities_list_dto"],
-        limit=limit,
-        page=page,
-        is_last_page=sample_entities_page["is_last_page"],
-    )
+    return {
+        "data": sample_entities_page["sample_entities_list_dto"],
+        "limit": limit,
+        "page": page,
+        "is_last_page": sample_entities_page["is_last_page"],
+    }
