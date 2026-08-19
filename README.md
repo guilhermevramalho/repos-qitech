@@ -167,6 +167,24 @@ A API responde **403** e nem chega a olhar o resto:
 {"title":"Forbidden","description":"Request must be internal","translation":"Requisicao precisa ser interna","code":"QIT000002"}
 ```
 
+### Todas as rotas
+
+Sete endereços — este é o mapa inteiro da API:
+
+| Método e rota | O que faz | Responde |
+|---|---|---|
+| `GET /` | diz qual serviço é este | `200` + nome e id |
+| `GET /health_check` | diz se a API está de pé | `204`, sem corpo |
+| `POST /sample_entity` | cria uma entidade | `201` + o `sample_entity_key` |
+| `GET /sample_entity/{key}` | busca uma entidade | `200` + a entidade |
+| `GET /sample_entities` | lista, de dez em dez (`?limit=&page=&status=`) | `200` + a página |
+| `PUT /sample_entity/{key}` | muda o status (`success` ou `failed`) | `202` + o `sample_entity_key` |
+| `PUT /webhook/sample_entity/{key}/increment_counter` | soma 1 no contador | `204`, sem corpo |
+
+As cinco de baixo exigem o `INTERNAL-TOKEN` (seção 6). As duas de cima
+são abertas — a primeira você já usou: foi ela que respondeu no
+navegador.
+
 Para desligar tudo: `Ctrl+C` no terminal da API e depois
 
 ```bash
