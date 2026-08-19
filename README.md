@@ -226,9 +226,9 @@ cliente de banco — tudo isso vive dentro do container de testes.
 O resultado sai assim:
 
 ```
-tests/integration/test_healthcheck.py::TestHealthCheck::test_home PASSED
+tests/integration/test_documentation_disabled.py::TestDocumentationDisabled::test_documentation_endpoints_are_not_served PASSED
 ...
-============================== 14 passed in 0.62s ==============================
+============================== 17 passed in 0.64s ==============================
 ```
 
 Para rodar só um arquivo (ou só um teste), acrescente o caminho:
