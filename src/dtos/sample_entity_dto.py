@@ -22,9 +22,10 @@ class SampleEntityDTO:
 
     @staticmethod
     def obj_to_dict(sample_entity: SampleEntity) -> dict:
-        # O deepcopy nao e frescura: sem ele, as tres linhas abaixo
-        # escreveriam DENTRO da coluna JSON do objeto que ainda esta na
-        # sessao do banco — e o proximo commit gravaria isso na tabela.
+        # O deepcopy nao e frescura: sem ele, `dto` seria o MESMO
+        # dicionario que vive dentro do objeto do banco, e as tres
+        # linhas abaixo sujariam esse objeto — que o resto da
+        # requisicao ainda vai usar.
         dto = deepcopy(sample_entity.sample_entity_data)
         dto["status"] = sample_entity.status.enumerator
         dto["sample_entity_key"] = sample_entity.sample_entity_key
