@@ -6,14 +6,10 @@ from database import get_db
 from schemas import CreateSampleEntityRequest, UpdateSampleEntityStatusRequest
 
 
-router = APIRouter(tags=["Sample Entity"])
+router = APIRouter()
 
 
-@router.post(
-    "/sample_entity",
-    status_code=status.HTTP_201_CREATED,
-    summary="Cria uma entidade",
-)
+@router.post("/sample_entity", status_code=status.HTTP_201_CREATED)
 def create_sample_entity(
     payload: CreateSampleEntityRequest,
     db: Session = Depends(get_db),
@@ -24,11 +20,7 @@ def create_sample_entity(
     return controller.create(payload.model_dump())
 
 
-@router.get(
-    "/sample_entity/{sample_entity_key}",
-    status_code=status.HTTP_200_OK,
-    summary="Busca uma entidade pela chave",
-)
+@router.get("/sample_entity/{sample_entity_key}", status_code=status.HTTP_200_OK)
 def get_sample_entity(
     sample_entity_key: str,
     db: Session = Depends(get_db),
@@ -37,11 +29,7 @@ def get_sample_entity(
     return controller.get_by_key(sample_entity_key)
 
 
-@router.put(
-    "/sample_entity/{sample_entity_key}",
-    status_code=status.HTTP_202_ACCEPTED,
-    summary="Muda o status de uma entidade",
-)
+@router.put("/sample_entity/{sample_entity_key}", status_code=status.HTTP_202_ACCEPTED)
 def update_sample_entity(
     sample_entity_key: str,
     payload: UpdateSampleEntityStatusRequest,
@@ -54,7 +42,6 @@ def update_sample_entity(
 @router.put(
     "/webhook/sample_entity/{sample_entity_key}/increment_counter",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Soma 1 no contador da entidade",
 )
 def increment_counter(
     sample_entity_key: str,
@@ -65,16 +52,12 @@ def increment_counter(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get(
-    "/sample_entities",
-    status_code=status.HTTP_200_OK,
-    summary="Lista as entidades, de pagina em pagina",
-)
+@router.get("/sample_entities", status_code=status.HTTP_200_OK)
 def list_sample_entities(
     db: Session = Depends(get_db),
-    limit: int = Query(default=10, ge=0, le=100, description="Quantos itens por pagina"),
-    page: int = Query(default=0, ge=0, description="Qual pagina, comecando do zero"),
-    status_filter: str = Query(default=None, alias="status", description="Filtra por status"),
+    limit: int = Query(default=10, ge=0, le=100),
+    page: int = Query(default=0, ge=0),
+    status_filter: str = Query(default=None, alias="status"),
 ) -> dict:
     controller = SampleEntityController(db)
 
