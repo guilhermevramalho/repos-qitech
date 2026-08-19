@@ -45,18 +45,129 @@ antes: as configurações já vêm com valor padrão dentro do
 O Docker baixa o Python, sobe o banco, cria as tabelas e liga a API. Na
 primeira vez demora alguns minutos; depois é quase instantâneo.
 
-Quando aparecer `Application startup complete`, abra no navegador:
+Quando aparecer `Application startup complete`, a API está no ar. Abra
+no navegador:
 
-### 👉 http://localhost:3000/docs
+### 👉 http://localhost:3000
 
-Essa página é o **Swagger**. Ela não foi escrita por ninguém: o FastAPI
-gera a documentação lendo o próprio código. Cada rota tem um botão
-**Try it out** que dispara a requisição de verdade, ali mesmo, sem
-Postman e sem `curl`.
+Você vai ver isto:
 
-Comece por ela. É o jeito mais rápido de entender o que a API faz.
+```json
+{"service":"bootcamp-api","id":"8"}
+```
 
-Para desligar tudo: `Ctrl+C` no terminal e depois
+Pouca coisa, e de propósito: essa rota só diz "estou viva, e eu sou este
+serviço". Mas você acabou de fazer uma **requisição HTTP** — a mesma
+coisa que o navegador faz ao abrir qualquer site.
+
+### Agora as outras rotas
+
+Elas não abrem no navegador, porque exigem um cabeçalho: o
+`INTERNAL-TOKEN`, que é a senha da API (seção 6). Para mandar um
+cabeçalho a gente usa o `curl`, um programa de linha de comando que já
+vem instalado no Mac, no Linux e no Windows.
+
+**Abra um segundo terminal** — o primeiro está ocupado rodando a API — e
+cole um comando de cada vez.
+
+> **No Windows**, use o **Git Bash**: ele veio junto com o Git da seção
+> 0. No PowerShell estes comandos não funcionam, porque lá `curl` é o
+> apelido de outro programa, com outra sintaxe.
+
+#### 1. Criar uma entidade
+
+```bash
+curl -X POST http://localhost:3000/sample_entity \
+  -H "INTERNAL-TOKEN: default_token" \
+  -H "Content-Type: application/json" \
+  -d '{"hello": "world"}'
+```
+
+```json
+{"sample_entity_key":"3fbf83e9-e5fc-4e0f-8427-db6a1a50f964"}
+```
+
+Esse `sample_entity_key` é o endereço da entidade que você acabou de
+criar. **Copie o seu** — ele nasce diferente a cada vez, e nos comandos
+abaixo você troca o que está escrito aqui pelo seu.
+
+#### 2. Buscar a entidade
+
+```bash
+curl http://localhost:3000/sample_entity/3fbf83e9-e5fc-4e0f-8427-db6a1a50f964 \
+  -H "INTERNAL-TOKEN: default_token"
+```
+
+```json
+{"hello":"world","status":"pending","sample_entity_key":"3fbf83e9-e5fc-4e0f-8427-db6a1a50f964","counter":0}
+```
+
+Você mandou um campo e voltaram quatro. Os outros três a API inventou
+sozinha: o endereço, o status inicial e um contador zerado.
+
+#### 3. Listar as entidades
+
+```bash
+curl http://localhost:3000/sample_entities \
+  -H "INTERNAL-TOKEN: default_token"
+```
+
+```json
+{"data":[{"hello":"world","status":"pending","sample_entity_key":"3fbf83e9-e5fc-4e0f-8427-db6a1a50f964","counter":0}],"limit":10,"page":0,"is_last_page":true}
+```
+
+Vêm de dez em dez. Para pedir outra quantidade ou outra página,
+acrescente `?limit=2&page=0` ao endereço. O `is_last_page` já responde a
+pergunta seguinte — "tem mais?" — sem custar uma segunda requisição.
+
+#### 4. Somar 1 no contador
+
+```bash
+curl -i -X PUT http://localhost:3000/webhook/sample_entity/3fbf83e9-e5fc-4e0f-8427-db6a1a50f964/increment_counter \
+  -H "INTERNAL-TOKEN: default_token"
+```
+
+```
+HTTP/1.1 204 No Content
+```
+
+Esta rota não responde nada — por isso o `-i`, que manda o `curl`
+mostrar também o **status** da resposta. `204` quer dizer "deu certo e
+não tenho nada a dizer". Repita o comando 2: o `counter` agora é `1`.
+
+#### 5. Mudar o status
+
+```bash
+curl -X PUT http://localhost:3000/sample_entity/3fbf83e9-e5fc-4e0f-8427-db6a1a50f964 \
+  -H "INTERNAL-TOKEN: default_token" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "success"}'
+```
+
+```json
+{"sample_entity_key":"3fbf83e9-e5fc-4e0f-8427-db6a1a50f964"}
+```
+
+Repita o comando 2: o `status` virou `success`. E rode este comando 5
+mais uma vez — agora a API recusa:
+
+```json
+{"title":"Entity cannot change status","description":"Entity with status success cannot update to success.","translation":"Essa entidade nao pode ser atualizada.","code":"QIT001002"}
+```
+
+Isso é uma **regra de negócio**, não um erro de digitação: entidade que
+já terminou não volta atrás. A frase que decide isso mora em
+`src/controllers/sample_entity_controller.py`, e você pode ir ler.
+
+#### Esqueceu o `-H "INTERNAL-TOKEN: ..."`?
+
+A API responde **403** e nem chega a olhar o resto:
+
+```json
+{"title":"Forbidden","description":"Request must be internal","translation":"Requisicao precisa ser interna","code":"QIT000002"}
+```
+
+Para desligar tudo: `Ctrl+C` no terminal da API e depois
 
 ```bash
 docker compose down
@@ -150,7 +261,8 @@ API_PORT=3001
 DB_PORT=5433
 ```
 
-Suba de novo. Agora a API atende em http://localhost:3001/docs.
+Suba de novo. Agora a API atende em http://localhost:3001 — e nos
+comandos `curl` da seção 1 você troca `3000` por `3001`.
 
 ### `failed to connect to the docker API`
 
@@ -191,7 +303,7 @@ src/
   constants.py     ← as configurações, lidas do ambiente
 
   routers/         ← recebe a requisição HTTP e devolve a resposta
-  schemas/         ← o formato do JSON que entra e do que sai
+  schemas/         ← o formato do JSON que entra
   controllers/     ← as regras de negócio: o que pode e o que não pode
   repositories/    ← as conversas com o banco
   models/          ← as tabelas, descritas em Python
@@ -266,7 +378,9 @@ INTERNAL-TOKEN: default_token
 Sem ele, a API responde **403**. `default_token` é o valor padrão; para
 trocar, ponha `INTERNAL_TOKEN=outra_coisa` no seu `.env`.
 
-Ficam abertas, de propósito: a rota raiz, o `/health_check` e o `/docs`.
+Ficam abertas, de propósito, só duas: a rota raiz e o `/health_check`
+— esta última porque quem a consulta é o próprio Docker, que não tem
+como mandar cabeçalho.
 
 ---
 
