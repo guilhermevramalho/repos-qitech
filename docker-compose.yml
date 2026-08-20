@@ -43,6 +43,7 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      SAMPLE_ENTITY_QUEUE_NAME: ${SAMPLE_ENTITY_QUEUE_NAME:-sample-entity-processing}
     volumes:
       # Monta o codigo pra dentro do container: salvou o arquivo,
       # a API recarrega sozinha (o --reload ali embaixo).
@@ -84,6 +85,7 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      SAMPLE_ENTITY_QUEUE_NAME: ${SAMPLE_ENTITY_QUEUE_NAME:-sample-entity-processing}
     volumes:
       # Mesmo codigo montado da mesma forma. Diferenca: o consumer nao
       # recarrega sozinho — depois de editar, reinicie com
