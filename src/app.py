@@ -16,10 +16,17 @@ from utils.logger import setup_logging
 def create_app() -> FastAPI:
     """Monta a aplicacao, peca por peca.
 
-    A ordem importa e e sempre a mesma:
-      1. as rotas          — o que a API sabe responder
-      2. os middlewares    — o que acontece com TODA requisicao
+    Os tres blocos abaixo seguem a ordem em que a requisicao encontra
+    cada um — de fora pra dentro:
+      1. os middlewares    — o que acontece com TODA requisicao
+      2. as rotas          — o que a API sabe responder
       3. os error handlers — como cada erro vira uma resposta
+
+    Essa ordem serve pra leitura, nao e exigencia: o FastAPI monta a
+    pilha de middlewares na primeira requisicao que chega, entao
+    registrar rota antes ou depois de middleware da no mesmo. So a
+    ordem DENTRO do bloco de middlewares tem consequencia, e ela esta
+    explicada logo abaixo.
     """
     # Os tres None desligam a documentacao automatica: o FastAPI sabe
     # gerar sozinho umas paginas descrevendo a API, e aqui elas nao
@@ -31,22 +38,24 @@ def create_app() -> FastAPI:
         openapi_url=None,
     )
 
-    # As rotas ficam na raiz: o que o router declara como "/sample_entity"
-    # atende em http://localhost:3000/sample_entity, sem nada na frente.
-    # Router novo que voce criar entra aqui embaixo, numa linha igual
-    # a estas duas.
-    application.include_router(health_check_router)
-    application.include_router(sample_entity_router)
-
     # Middleware e uma camada por fora da aplicacao: toda requisicao
     # atravessa todas elas na ida, e todas de novo na volta.
     #
     # O ULTIMO registrado e o mais externo — por isso os cabecalhos de
     # seguranca ficam por fim: assim eles entram ate nas respostas de
     # erro que o middleware de token devolve antes de chegar na rota.
+    # Ou seja: destas tres linhas, a de BAIXO e a primeira que a
+    # requisicao encontra. Trocar a ordem delas muda o comportamento.
     register_internal_token_middleware(application)
     register_request_logger_middleware(application)
     register_secure_headers_middleware(application)
+
+    # As rotas ficam na raiz: o que o router declara como "/sample_entity"
+    # atende em http://localhost:3000/sample_entity, sem nada na frente.
+    # Router novo que voce criar entra aqui embaixo, numa linha igual
+    # a estas duas.
+    application.include_router(health_check_router)
+    application.include_router(sample_entity_router)
 
     register_error_handlers(application)
 
