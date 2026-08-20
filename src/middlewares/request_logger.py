@@ -10,10 +10,10 @@ logger = get_logger(__name__)
 
 
 def register_request_logger_middleware(application: FastAPI) -> None:
-    """Escreve no log toda requisicao que entra e toda resposta que sai.
+    """Escreve no log toda requisição que entra e toda resposta que sai.
 
-    Quando algo der errado em producao, e esta linha de log que conta
-    a historia: qual rota, qual status, quanto tempo demorou.
+    Quando algo der errado em produção, é esta linha de log que conta
+    a história: qual rota, qual status, quanto tempo demorou.
     """
 
     @application.middleware("http")

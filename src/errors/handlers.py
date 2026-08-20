@@ -20,8 +20,8 @@ logger = get_logger(__name__)
 def qi_exception_to_response(exception: QIException) -> JSONResponse:
     """Traduz um erro nosso para a resposta JSON que o cliente recebe.
 
-    Este e o unico lugar do projeto que sabe como um erro vira HTTP.
-    Trocar de framework significa reescrever esta funcao — e mais nada.
+    Este é o único lugar do projeto que sabe como um erro vira HTTP.
+    Trocar de framework significa reescrever esta função — e mais nada.
     """
     body = {
         "title": exception.title,
@@ -43,7 +43,7 @@ def describe_validation_error(error: dict) -> str:
 
 
 def register_error_handlers(application: FastAPI) -> None:
-    """Ensina a aplicacao a responder cada tipo de erro."""
+    """Ensina a aplicação a responder cada tipo de erro."""
 
     @application.exception_handler(QIException)
     def handle_qi_exception(request: Request, exception: QIException) -> JSONResponse:
@@ -67,8 +67,8 @@ def register_error_handlers(application: FastAPI) -> None:
         description = describe_validation_error(first_error)
         origin = first_error.get("loc", [""])[0]
 
-        # Erro no endereco (?page=-3) e erro no corpo do JSON sao
-        # problemas diferentes, e o cliente recebe codigos diferentes.
+        # Erro no endereço (?page=-3) e erro no corpo do JSON são
+        # problemas diferentes, e o cliente recebe códigos diferentes.
         if origin in ("query", "path"):
             return qi_exception_to_response(InvalidParameter(description))
 

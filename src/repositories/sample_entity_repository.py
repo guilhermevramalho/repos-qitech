@@ -7,10 +7,10 @@ from models import SampleEntity, SampleEntityStatus, SampleEntityStatusEvent
 
 
 class SampleEntityRepository:
-    """A camada que fala com o banco. So aqui existe query.
+    """A camada que fala com o banco. Só aqui existe query.
 
-    Nenhuma regra de negocio mora aqui: esta classe busca, guarda e
-    atualiza — quem decide o que fazer com isso e o controller.
+    Nenhuma regra de negócio mora aqui: esta classe busca, guarda e
+    atualiza — quem decide o que fazer com isso é o controller.
     """
 
     def __init__(self, db: Session) -> None:

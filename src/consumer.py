@@ -10,17 +10,17 @@ from utils.logger import get_logger, setup_logging
 
 
 # "consumer" em vez de __name__: rodando como programa principal, o
-# __name__ do Python vale "__main__" — e "__main__" nao diz nada a quem
-# le o log.
+# __name__ do Python vale "__main__" — e "__main__" não diz nada a quem
+# lê o log.
 logger = get_logger("consumer")
 
 
 def process_message(message: dict) -> None:
     """Descobre o que fazer com uma mensagem, e faz.
 
-    O `MessageType` diz qual regra chamar. Aqui existe um tipo so, e
+    O `MessageType` diz qual regra chamar. Aqui existe um tipo só, e
     ainda assim o `else` no fim importa: mensagem de tipo desconhecido
-    e um erro, nao uma mensagem pra ignorar em silencio.
+    é um erro, não uma mensagem pra ignorar em silêncio.
     """
     message_type = message["MessageAttributes"]["MessageType"]["StringValue"]
     message_body = json.loads(message["Body"])
@@ -44,38 +44,38 @@ def process_message(message: dict) -> None:
 
 
 def run() -> None:
-    """O laco: pede mensagens, processa, apaga. Pra sempre.
+    """O laço: pede mensagens, processa, apaga. Pra sempre.
 
-    Isto aqui e o consumer inteiro. Um processo separado da API, que nao
-    atende requisicao nenhuma e nao tem porta: ele so olha a fila.
+    Isto aqui é o consumer inteiro. Um processo separado da API, que não
+    atende requisição nenhuma e não tem porta: ele só olha a fila.
 
     ────────────────────────────────────────────────────────────────
-    A LICAO DESTE ARQUIVO — por que o `delete_message` esta DEPOIS
+    A LIÇÃO DESTE ARQUIVO — por que o `delete_message` está DEPOIS
     ────────────────────────────────────────────────────────────────
-    Quando o consumer pega uma mensagem, ela nao sai da fila: ela fica
-    INVISIVEL por um tempo (o `VisibilityTimeout`, 30 segundos, definido
+    Quando o consumer pega uma mensagem, ela não sai da fila: ela fica
+    INVISÍVEL por um tempo (o `VisibilityTimeout`, 30 segundos, definido
     em src/sqs.py). Duas coisas podem acontecer nesses 30 segundos:
 
       • deu certo  → o `delete_message` abaixo apaga a mensagem, e
                      acabou;
-      • deu erro   → o `delete_message` NAO roda. Passados os 30
-                     segundos a mensagem volta a ficar visivel, e o
+      • deu erro   → o `delete_message` NÃO roda. Passados os 30
+                     segundos a mensagem volta a ficar visível, e o
                      consumer a pega de novo.
 
-    Ou seja: nao existe nenhuma linha de codigo aqui escrita pra "tentar
-    de novo". O retry nasce de graca, de NAO apagar. E isso e de
-    proposito: quantas vezes tentar, quanto esperar entre tentativas e
+    Ou seja: não existe nenhuma linha de código aqui escrita pra "tentar
+    de novo". O retry nasce de graça, de NÃO apagar. E isso é de
+    propósito: quantas vezes tentar, quanto esperar entre tentativas e
     pra onde mandar a mensagem que falhou muitas vezes (a "fila do
-    desespero", ou DLQ) sao configuracao da fila — decisao de infra,
+    desespero", ou DLQ) são configuração da fila — decisão de infra,
     mudada sem tocar neste arquivo.
 
-    O contrario disso, escrever o retry na mao aqui dentro, e um erro
+    O contrário disso, escrever o retry na mão aqui dentro, é um erro
     comum e caro: o processo morre no meio e a contagem de tentativas
     morre com ele.
 
-    Uma consequencia honesta: se uma mensagem falha SEMPRE (por exemplo,
-    pede uma entidade que nao existe mais), ela volta pra sempre. Quem
-    resolve isso e a DLQ — e este projeto de estudo nao tem uma.
+    Uma consequência honesta: se uma mensagem falha SEMPRE (por exemplo,
+    pede uma entidade que não existe mais), ela volta pra sempre. Quem
+    resolve isso é a DLQ — e este projeto de estudo não tem uma.
     """
     logger.info("Consumer no ar, olhando a fila")
 
@@ -88,7 +88,7 @@ def run() -> None:
                 delete_message(message["ReceiptHandle"])
                 logger.info("Mensagem processada e apagada da fila")
             except Exception:
-                # O consumer nao pode morrer por causa de uma mensagem
+                # O consumer não pode morrer por causa de uma mensagem
                 # ruim: as outras da fila continuam esperando. Anota o
                 # que aconteceu e segue — sem apagar a mensagem.
                 logger.error(f"Falhei ao processar a mensagem:\n{traceback.format_exc()}")
@@ -99,9 +99,9 @@ def main() -> None:
     error_verification()
     setup_logging()
 
-    # A mesma chamada que a API faz quando sobe. Criar uma fila que ja
-    # existe nao da erro, e por isso os dois podem fazer isso sem
-    # combinar nada: quem chegar primeiro cria, o outro so encontra.
+    # A mesma chamada que a API faz quando sobe. Criar uma fila que já
+    # existe não dá erro, e por isso os dois podem fazer isso sem
+    # combinar nada: quem chegar primeiro cria, o outro só encontra.
     create_queue()
 
     run()

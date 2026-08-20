@@ -1,20 +1,20 @@
 from fastapi import FastAPI, Request
 
 
-# Cabecalhos que instruem o navegador a se proteger.
-# Sao baratos de ligar e evitam uma familia inteira de ataques.
+# Cabeçalhos que instruem o navegador a se proteger.
+# São baratos de ligar e evitam uma família inteira de ataques.
 SECURITY_HEADERS = {
-    # Nao revela qual servidor esta rodando: informacao de menos
-    # para quem estiver procurando uma versao com falha conhecida.
+    # Não revela qual servidor está rodando: informação de menos
+    # para quem estiver procurando uma versão com falha conhecida.
     "Server": "undisclosed",
-    # Proibe colocar esta pagina dentro de um iframe de outro site.
+    # Proíbe colocar esta página dentro de um iframe de outro site.
     "x-frame-options": "SAMEORIGIN",
     "x-xss-protection": "1; mode=block",
     # Impede o navegador de "adivinhar" o tipo do arquivo.
     "x-content-type-options": "nosniff",
-    # Exige HTTPS nas proximas visitas.
+    # Exige HTTPS nas próximas visitas.
     "strict-transport-security": "max-age=63072000; includeSubdomains",
-    # So carrega script/estilo vindos do proprio dominio.
+    # Só carrega script/estilo vindos do próprio domínio.
     "content-security-policy": "default-src 'self'",
 }
 

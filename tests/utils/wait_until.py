@@ -16,18 +16,18 @@ TIMEOUT_MESSAGE = (
 
 
 def wait_until(condition, description: str, timeout_seconds: float = TIMEOUT_SECONDS) -> None:
-    """Fica perguntando ate a resposta mudar — ou desiste e explica.
+    """Fica perguntando até a resposta mudar — ou desiste e explica.
 
-    Testar coisa assincrona tem um jeito proprio: quando a requisicao
-    responde, o trabalho ainda nao aconteceu. Nao da pra conferir na
-    linha seguinte, e tambem nao se resolve com um `sleep` fixo — o
-    numero certo pra ele nao existe: pequeno demais e o teste falha sem
-    motivo; grande demais e a suite fica lenta pra sempre.
+    Testar coisa assíncrona tem um jeito próprio: quando a requisição
+    responde, o trabalho ainda não aconteceu. Não dá pra conferir na
+    linha seguinte, e também não se resolve com um `sleep` fixo — o
+    número certo pra ele não existe: pequeno demais e o teste falha sem
+    motivo; grande demais e a suíte fica lenta pra sempre.
 
-    O jeito e este: pergunta de novo a cada `INTERVAL_SECONDS`, para no
+    O jeito é este: pergunta de novo a cada `INTERVAL_SECONDS`, para no
     instante em que a resposta chega e desiste depois de
     `TIMEOUT_SECONDS`. No caminho normal isto custa menos de um segundo;
-    os 10 segundos existem so pra maquina de alguem num dia ruim.
+    os 10 segundos existem só pra máquina de alguém num dia ruim.
     """
     deadline = time.monotonic() + timeout_seconds
 

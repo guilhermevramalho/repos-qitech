@@ -14,8 +14,8 @@ def create_sample_entity(
     payload: CreateSampleEntityRequest,
     db: Session = Depends(get_db),
 ) -> dict:
-    # Se o codigo chegou ate aqui, o payload JA foi validado pelo Pydantic.
-    # A rota nao precisa checar nada: ela so chama a regra de negocio.
+    # Se o código chegou até aqui, o payload JÁ foi validado pelo Pydantic.
+    # A rota não precisa checar nada: ela só chama a regra de negócio.
     controller = SampleEntityController(db)
     return controller.create(payload.model_dump())
 
@@ -44,9 +44,9 @@ def process_sample_entity(
     sample_entity_key: str,
     db: Session = Depends(get_db),
 ) -> dict:
-    # 202, e nao 201 nem 200: "recebi seu pedido e vou fazer", nao
-    # "esta feito". Quando esta linha responde, o trabalho ainda nao
-    # aconteceu — ele esta num recado na fila, esperando o consumer.
+    # 202, e não 201 nem 200: "recebi seu pedido e vou fazer", não
+    # "está feito". Quando esta linha responde, o trabalho ainda não
+    # aconteceu — ele está num recado na fila, esperando o consumer.
     controller = SampleEntityController(db)
     return controller.request_processing(sample_entity_key)
 
@@ -76,8 +76,8 @@ def list_sample_entities(
     offset = page * limit
     sample_entities_page = controller.get_list(limit, offset, status_filter)
 
-    # A paginacao e assunto do endereco (?limit=&page=), nao da entidade:
-    # por isso quem monta o envelope da pagina e a rota, e nao o DTO.
+    # A paginação é assunto do endereço (?limit=&page=), não da entidade:
+    # por isso quem monta o envelope da página é a rota, e não o DTO.
     return {
         "data": sample_entities_page["sample_entities_list_dto"],
         "limit": limit,

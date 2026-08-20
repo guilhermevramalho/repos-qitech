@@ -9,23 +9,23 @@ class SampleEntityDTO:
 
     O repository entrega um `SampleEntity` — o espelho da tabela, com
     coluna JSON e chave estrangeira. Nada disso sai para o cliente: aqui
-    esse objeto vira um dicionario simples, e e esse dicionario que o
+    esse objeto vira um dicionário simples, e é esse dicionário que o
     FastAPI transforma no JSON da resposta.
 
     Compare com `src/models/sample_entity.py`, que descreve a TABELA:
-    la o `hello` esta escondido dentro de uma coluna JSON chamada
-    `sample_entity_data`, e o status e um numero apontando pra outra
-    tabela. Aqui os dois sao campos planos, com nome de gente.
+    lá o `hello` está escondido dentro de uma coluna JSON chamada
+    `sample_entity_data`, e o status é um número apontando pra outra
+    tabela. Aqui os dois são campos planos, com nome de gente.
 
-    Campo novo na resposta se acrescenta aqui — e so aqui.
+    Campo novo na resposta se acrescenta aqui — e só aqui.
     """
 
     @staticmethod
     def obj_to_dict(sample_entity: SampleEntity) -> dict:
-        # O deepcopy nao e frescura: sem ele, `dto` seria o MESMO
-        # dicionario que vive dentro do objeto do banco, e as tres
+        # O deepcopy não é frescura: sem ele, `dto` seria o MESMO
+        # dicionário que vive dentro do objeto do banco, e as três
         # linhas abaixo sujariam esse objeto — que o resto da
-        # requisicao ainda vai usar.
+        # requisição ainda vai usar.
         dto = deepcopy(sample_entity.sample_entity_data)
         dto["status"] = sample_entity.status.enumerator
         dto["sample_entity_key"] = sample_entity.sample_entity_key

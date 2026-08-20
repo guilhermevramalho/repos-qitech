@@ -10,14 +10,14 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False)
 
 
 def get_db() -> Session:
-    """Entrega uma conversa aberta com o banco e fecha no fim da requisicao.
+    """Entrega uma conversa aberta com o banco e fecha no fim da requisição.
 
     Quem precisa do banco escreve, na rota:
 
         def minha_rota(db: Session = Depends(get_db)):
 
-    O FastAPI chama esta funcao, guarda o que vem depois do `yield` pra
-    executar quando a resposta ja tiver sido enviada, e fecha a conexao
+    O FastAPI chama esta função, guarda o que vem depois do `yield` pra
+    executar quando a resposta já tiver sido enviada, e fecha a conexão
     sozinho — mesmo se a rota der erro no meio.
     """
     db = SessionLocal()

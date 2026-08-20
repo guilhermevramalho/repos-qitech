@@ -5,10 +5,10 @@ KEY_THAT_DOES_NOT_EXIST = "00000000-0000-0000-0000-000000000000"
 
 
 class TestSampleEntityProcess:
-    """O fluxo assincrono, testado de fora — como um cliente o veria.
+    """O fluxo assíncrono, testado de fora — como um cliente o veria.
 
-    Este teste nao sabe que existe fila, nem SQS, nem consumer. Ele manda
-    uma requisicao e depois fica perguntando pela outra ponta (o GET) ate
+    Este teste não sabe que existe fila, nem SQS, nem consumer. Ele manda
+    uma requisição e depois fica perguntando pela outra ponta (o GET) até
     a resposta mudar. Se um dia a fila for trocada por outra coisa, este
     arquivo continua valendo sem mudar uma linha.
     """
@@ -65,9 +65,9 @@ class TestSampleEntityProcess:
 
         wait_until(status_is_success, f"o status da entidade {_key} virar 'success'")
 
-        # Depois que o consumer terminou, o mesmo pedido e recusado na
-        # hora: a regra de negocio nao muda por o trabalho ter vindo da
-        # fila em vez de ter vindo direto de uma requisicao.
+        # Depois que o consumer terminou, o mesmo pedido é recusado na
+        # hora: a regra de negócio não muda por o trabalho ter vindo da
+        # fila em vez de ter vindo direto de uma requisição.
         status, response = RequestGenerator.POST_sample_entity_process(_key)
         assert status == 409
         assert response["code"] == "QIT001002"

@@ -31,12 +31,12 @@ DATABASE_OFFLINE = (
 class DbUtils:
     """Limpa o banco entre os testes e recria as tabelas do zero.
 
-    Cada teste comeca com o banco vazio: assim um teste nunca depende
-    do que outro deixou pra tras.
+    Cada teste começa com o banco vazio: assim um teste nunca depende
+    do que outro deixou pra trás.
 
-    A limpeza acontece pela mesma conexao que a aplicacao usa (a
-    DATABASE_URL), e nao por um programa externo: quem tem Docker
-    rodando ja tem tudo que precisa.
+    A limpeza acontece pela mesma conexão que a aplicação usa (a
+    DATABASE_URL), e não por um programa externo: quem tem Docker
+    rodando já tem tudo que precisa.
     """
 
     @staticmethod

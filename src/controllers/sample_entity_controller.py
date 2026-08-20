@@ -18,7 +18,7 @@ CHANGEABLE_STATUS = "pending"
 
 
 class SampleEntityController(BaseController):
-    """As regras de negocio. Aqui mora o "pode" e o "nao pode"."""
+    """As regras de negócio. Aqui mora o "pode" e o "não pode"."""
 
     def __init__(self, db: Session) -> None:
         super().__init__(db, __name__)
@@ -48,8 +48,8 @@ class SampleEntityController(BaseController):
     def get_list(self, limit: int, offset: int, status_enumerator: str) -> dict:
         sample_entities_list = self.sample_entity_repository.list_page(limit, offset, status_enumerator)
 
-        # Pedimos um a mais que o limite so pra saber se existe proxima
-        # pagina. Se veio o extra, ele nao entra na resposta.
+        # Pedimos um a mais que o limite só pra saber se existe próxima
+        # página. Se veio o extra, ele não entra na resposta.
         is_last_page = True
         if len(sample_entities_list) > limit:
             is_last_page = False
@@ -78,9 +78,9 @@ class SampleEntityController(BaseController):
     def request_processing(self, sample_entity_key: str) -> dict:
         """Aceita o pedido de processamento e vai embora.
 
-        Repare no que esta funcao NAO faz: ela nao processa nada. Ela
-        confere o que da pra conferir agora, poe um recado na fila e
-        devolve. Quem faz o trabalho e o consumer, depois — e e por isso
+        Repare no que esta função NÃO faz: ela não processa nada. Ela
+        confere o que dá pra conferir agora, põe um recado na fila e
+        devolve. Quem faz o trabalho é o consumer, depois — e é por isso
         que a rota responde 202 ("aceitei") em vez de 200 ("pronto").
         """
         self.logger.debug(f"Pedido de processamento da entidade {sample_entity_key}")
@@ -99,8 +99,8 @@ class SampleEntityController(BaseController):
     def consumer_process_sample_entity(self, message_body: dict) -> None:
         """O trabalho de verdade — chamado pelo consumer, nunca por uma rota.
 
-        Tudo que ele sabe da requisicao original e o que veio na mensagem:
-        uma chave. O resto ele busca no banco, como qualquer outro codigo.
+        Tudo que ele sabe da requisição original é o que veio na mensagem:
+        uma chave. O resto ele busca no banco, como qualquer outro código.
         """
         sample_entity_key = message_body["sample_entity_key"]
         self.logger.debug(f"Processando a entidade {sample_entity_key}")
@@ -110,15 +110,15 @@ class SampleEntityController(BaseController):
         if sample_entity is None:
             raise NotFoundSampleEntity(sample_entity_key)
 
-        # A fila promete entregar a mensagem AO MENOS uma vez — nao
+        # A fila promete entregar a mensagem AO MENOS uma vez — não
         # exatamente uma vez. A mesma mensagem pode chegar duas vezes, e
-        # nao e defeito: e como filas funcionam.
+        # não é defeito: é como filas funcionam.
         #
         # Por isso o trabalho confere o estado antes de agir, em vez de
-        # confiar no que veio escrito na mensagem. Na segunda vez nao ha
-        # nada a fazer, e nao fazer nada e a resposta certa. Codigo que
+        # confiar no que veio escrito na mensagem. Na segunda vez não há
+        # nada a fazer, e não fazer nada é a resposta certa. Código que
         # aguenta receber o mesmo pedido duas vezes sem estragar nada
-        # tem nome: e idempotente.
+        # tem nome: é idempotente.
         if sample_entity.status.enumerator != CHANGEABLE_STATUS:
             self.logger.info(f"A entidade {sample_entity_key} ja saiu de '{CHANGEABLE_STATUS}'. Nada a fazer.")
             return
