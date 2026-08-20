@@ -9,6 +9,7 @@ from middlewares import (
     register_secure_headers_middleware,
 )
 from routers import health_check_router, sample_entity_router
+from sqs import create_queue
 from utils.logger import setup_logging
 
 
@@ -58,6 +59,12 @@ def main() -> FastAPI:
     check_variables()
     error_verification()
     setup_logging()
+
+    # Garante que a fila existe antes da primeira requisicao chegar. O
+    # consumer faz a mesma chamada quando sobe: criar fila que ja existe
+    # nao da erro, e assim nenhum dos dois depende do outro ter subido
+    # primeiro — nem de voce rodar comando nenhum na mao.
+    create_queue()
 
     return create_app()
 

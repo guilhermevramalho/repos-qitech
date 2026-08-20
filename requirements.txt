@@ -9,3 +9,8 @@ SQLAlchemy==2.0.23
 # 2.9.10 e a primeira serie com pacote pronto para ARM: no Mac M1/M2/M3
 # a 2.9.5 tentaria compilar do zero e o build quebrava.
 psycopg2-binary==2.9.10
+# O boto3 e a biblioteca da AWS pra Python — aqui ela fala com a fila
+# (SQS). O botocore e o motor por dentro dele: vem junto, e a gente fixa
+# a versao dos dois pelo mesmo motivo da linha de cima.
+boto3==1.34.106
+botocore==1.34.109

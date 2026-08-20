@@ -34,6 +34,15 @@ services:
       # A senha que protege os endpoints internos. O padrao vale pra
       # estudar; num sistema de verdade, isso nunca teria valor padrao.
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
+      # Onde esta a fila. Mesma historia do banco: aqui dentro o
+      # localstack atende pelo nome "localstack", nunca por localhost.
+      SQS_ENDPOINT_URL: http://localstack:4566
+      # A Amazon exige chave em toda chamada; o localstack aceita
+      # qualquer uma. Estas sao de mentirinha, e e por isso que este
+      # projeto roda sem voce ter conta na Amazon.
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
     volumes:
       # Monta o codigo pra dentro do container: salvou o arquivo,
       # a API recarrega sozinha (o --reload ali embaixo).
@@ -52,6 +61,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      localstack:
+        condition: service_healthy
 
   db:
     build: ./database/.
@@ -68,6 +79,28 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  # A fila. Na QI Tech, em producao, isto e o SQS da Amazon; aqui e o
+  # localstack, que imita os servicos dela dentro do seu Docker. O codigo
+  # da aplicacao nao muda: muda o endereco pra onde ele fala.
+  #
+  # Nao precisa de conta na Amazon, nem de cartao, nem de internet depois
+  # que a imagem baixou.
+  localstack:
+    image: localstack/localstack:3.0.2
+    environment:
+      # So o SQS. O localstack sabe imitar dezenas de servicos da Amazon,
+      # e ligar todos custaria memoria da sua maquina por nada.
+      SERVICES: sqs
+    healthcheck:
+      # "O container subiu" nao e "o SQS ja responde". Este comando fala
+      # com o SQS de verdade — e a API e o consumer so sobem depois que
+      # ele responder, senao a primeira chamada deles morreria.
+      test: ["CMD-SHELL", "awslocal sqs list-queues"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   # Os testes rodam DENTRO do Docker, num container que ja tem Python e
   # pytest instalados. Voce nao precisa de nada disso na sua maquina:

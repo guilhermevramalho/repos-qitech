@@ -20,7 +20,12 @@ def setup_logging() -> None:
     root_logger.setLevel(level)
     root_logger.handlers = [handler]
 
-    logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+    # Estas bibliotecas falam MUITO em modo debug: o boto3 escreve a
+    # assinatura criptografica de cada chamada a fila, e sao dezenas de
+    # linhas por mensagem. Nada disso e sobre o seu codigo, e no meio
+    # dessa parede voce nao acharia a sua propria linha de log.
+    for biblioteca_falante in ["urllib3", "boto3", "botocore", "s3transfer"]:
+        logging.getLogger(biblioteca_falante).setLevel(logging.CRITICAL)
 
 
 def get_logger(class_name: str) -> logging.Logger:
