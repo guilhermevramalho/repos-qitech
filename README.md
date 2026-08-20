@@ -392,7 +392,7 @@ check if the path is correct and if the daemon is running
 O Docker não está ligado. Abra o **Docker Desktop** (Mac/Windows) e
 espere ficar verde. No Linux: `sudo systemctl start docker`.
 
-### `Nao consegui falar com a API` / `Nao consegui falar com o banco`
+### `Não consegui falar com a API` / `Não consegui falar com o banco`
 
 Só aparece no atalho local (fora do Docker). Quer dizer que a API ou o
 banco não estão de pé, ou que a porta no seu `.env` não é a que eles

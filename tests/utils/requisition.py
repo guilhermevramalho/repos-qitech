@@ -5,8 +5,8 @@ from os import environ
 
 
 API_OFFLINE = (
-    "Nao consegui falar com a API em {base_url}.\n"
-    "Ela precisa estar de pe pros testes rodarem. Suba com:  docker compose up"
+    "Não consegui falar com a API em {base_url}.\n"
+    "Ela precisa estar de pé pros testes rodarem. Suba com:  docker compose up"
 )
 
 

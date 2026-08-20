@@ -5,10 +5,10 @@ TIMEOUT_SECONDS = 10.0
 INTERVAL_SECONDS = 0.2
 
 TIMEOUT_MESSAGE = (
-    "Esperei {timeout:.0f} segundos e isto nao aconteceu: {description}.\n"
+    "Esperei {timeout:.0f} segundos e isto não aconteceu: {description}.\n"
     "\n"
-    "Quem faz esse trabalho nao e a API: e o consumer, num container\n"
-    "separado. Confira se ele esta de pe e o que ele andou fazendo:\n"
+    "Quem faz esse trabalho não é a API: é o consumer, num container\n"
+    "separado. Confira se ele está de pé e o que ele andou fazendo:\n"
     "\n"
     "  docker compose ps consumer\n"
     "  docker compose logs consumer"

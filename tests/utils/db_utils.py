@@ -16,15 +16,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_FILE = PROJECT_ROOT / "database" / "database.sql"
 
 MISSING_DATABASE_URL = (
-    "A variavel DATABASE_URL nao esta definida.\n"
-    "Rodando com 'docker compose run --rm tests' ela ja vem preenchida.\n"
+    "A variável DATABASE_URL não está definida.\n"
+    "Rodando com 'docker compose run --rm tests' ela já vem preenchida.\n"
     "Fora do Docker, copie o arquivo de exemplo:  cp .env.example .env"
 )
 
 DATABASE_OFFLINE = (
-    "Nao consegui falar com o banco em {host}:{port}.\n"
-    "Ele precisa estar de pe pros testes rodarem. Suba com:  docker compose up\n"
-    "Se ele ja esta de pe, confira a porta na DATABASE_URL do seu .env."
+    "Não consegui falar com o banco em {host}:{port}.\n"
+    "Ele precisa estar de pé pros testes rodarem. Suba com:  docker compose up\n"
+    "Se ele já está de pé, confira a porta na DATABASE_URL do seu .env."
 )
 
 
