@@ -39,6 +39,18 @@ def update_sample_entity(
     return controller.update_status(sample_entity_key, payload.status)
 
 
+@router.post("/sample_entity/{sample_entity_key}/process", status_code=status.HTTP_202_ACCEPTED)
+def process_sample_entity(
+    sample_entity_key: str,
+    db: Session = Depends(get_db),
+) -> dict:
+    # 202, e nao 201 nem 200: "recebi seu pedido e vou fazer", nao
+    # "esta feito". Quando esta linha responde, o trabalho ainda nao
+    # aconteceu — ele esta num recado na fila, esperando o consumer.
+    controller = SampleEntityController(db)
+    return controller.request_processing(sample_entity_key)
+
+
 @router.put(
     "/webhook/sample_entity/{sample_entity_key}/increment_counter",
     status_code=status.HTTP_204_NO_CONTENT,

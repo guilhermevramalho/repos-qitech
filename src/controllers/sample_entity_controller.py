@@ -3,7 +3,18 @@ from sqlalchemy.orm import Session
 from controllers.base_controller import BaseController
 from dtos import SampleEntityDTO
 from errors import NotFoundSampleEntity, SampleEntityFinalStatus
+from models import SampleEntity
 from repositories import SampleEntityRepository
+from sqs import PROCESS_SAMPLE_ENTITY, send_message
+
+
+# Em que status a entidade fica quando o processamento da fila termina.
+PROCESSED_STATUS = "success"
+
+# Antes de qual status a entidade ainda pode mudar de estado. O nome
+# aparece nas duas pontas — na regra do PUT e na do processamento — e
+# por isso mora aqui, escrito uma vez.
+CHANGEABLE_STATUS = "pending"
 
 
 class SampleEntityController(BaseController):
@@ -55,10 +66,7 @@ class SampleEntityController(BaseController):
         if sample_entity is None:
             raise NotFoundSampleEntity(sample_entity_key)
 
-        old_status = sample_entity.status.enumerator
-
-        if old_status != "pending":
-            raise SampleEntityFinalStatus(old_status, new_status)
+        self._check_status_can_change(sample_entity, new_status)
 
         self.sample_entity_repository.update_status(sample_entity, new_status)
 
@@ -66,6 +74,33 @@ class SampleEntityController(BaseController):
         self.session.commit()
 
         return sample_entity_dto
+
+    def request_processing(self, sample_entity_key: str) -> dict:
+        """Aceita o pedido de processamento e vai embora.
+
+        Repare no que esta funcao NAO faz: ela nao processa nada. Ela
+        confere o que da pra conferir agora, poe um recado na fila e
+        devolve. Quem faz o trabalho e o consumer, depois — e e por isso
+        que a rota responde 202 ("aceitei") em vez de 200 ("pronto").
+        """
+        self.logger.debug(f"Pedido de processamento da entidade {sample_entity_key}")
+
+        sample_entity = self.sample_entity_repository.get_by_key(sample_entity_key)
+
+        if sample_entity is None:
+            raise NotFoundSampleEntity(sample_entity_key)
+
+        self._check_status_can_change(sample_entity, PROCESSED_STATUS)
+
+        send_message({"sample_entity_key": sample_entity_key}, PROCESS_SAMPLE_ENTITY)
+
+        return SampleEntityDTO.only_obj_key(sample_entity)
+
+    def _check_status_can_change(self, sample_entity: SampleEntity, new_status: str) -> None:
+        old_status = sample_entity.status.enumerator
+
+        if old_status != CHANGEABLE_STATUS:
+            raise SampleEntityFinalStatus(old_status, new_status)
 
     def webhook_increment_counter(self, sample_entity_key: str) -> None:
         self.logger.debug(f"Processando webhook da entidade {sample_entity_key}")
