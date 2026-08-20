@@ -38,6 +38,15 @@ class RequestGenerator:
         return response.response_status, response.response_json
 
     @staticmethod
+    def POST_sample_entity_process(sample_entity_key: str) -> BaseConnectorResponse:
+        response = ClientRequisition.send(
+            "POST",
+            f"/sample_entity/{sample_entity_key}/process",
+            headers={"INTERNAL-TOKEN": INTERNAL_TOKEN},
+        )
+        return response.response_status, response.response_json
+
+    @staticmethod
     def PUT_webhook_sample_entity(sample_entity_key: str) -> BaseConnectorResponse:
         response = ClientRequisition.send(
             "PUT",

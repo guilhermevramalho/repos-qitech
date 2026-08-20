@@ -168,3 +168,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      # O teste do fluxo assincrono manda um pedido pra API e espera o
+      # resultado aparecer. Sem alguem consumindo a fila, ele esperaria
+      # pra sempre — por isso o consumer precisa estar no ar tambem.
+      consumer:
+        condition: service_started
