@@ -96,6 +96,37 @@ class SampleEntityController(BaseController):
 
         return SampleEntityDTO.only_obj_key(sample_entity)
 
+    def consumer_process_sample_entity(self, message_body: dict) -> None:
+        """O trabalho de verdade — chamado pelo consumer, nunca por uma rota.
+
+        Tudo que ele sabe da requisicao original e o que veio na mensagem:
+        uma chave. O resto ele busca no banco, como qualquer outro codigo.
+        """
+        sample_entity_key = message_body["sample_entity_key"]
+        self.logger.debug(f"Processando a entidade {sample_entity_key}")
+
+        sample_entity = self.sample_entity_repository.get_by_key(sample_entity_key)
+
+        if sample_entity is None:
+            raise NotFoundSampleEntity(sample_entity_key)
+
+        # A fila promete entregar a mensagem AO MENOS uma vez — nao
+        # exatamente uma vez. A mesma mensagem pode chegar duas vezes, e
+        # nao e defeito: e como filas funcionam.
+        #
+        # Por isso o trabalho confere o estado antes de agir, em vez de
+        # confiar no que veio escrito na mensagem. Na segunda vez nao ha
+        # nada a fazer, e nao fazer nada e a resposta certa. Codigo que
+        # aguenta receber o mesmo pedido duas vezes sem estragar nada
+        # tem nome: e idempotente.
+        if sample_entity.status.enumerator != CHANGEABLE_STATUS:
+            self.logger.info(f"A entidade {sample_entity_key} ja saiu de '{CHANGEABLE_STATUS}'. Nada a fazer.")
+            return
+
+        self.sample_entity_repository.update_status(sample_entity, PROCESSED_STATUS)
+
+        self.session.commit()
+
     def _check_status_can_change(self, sample_entity: SampleEntity, new_status: str) -> None:
         old_status = sample_entity.status.enumerator
 

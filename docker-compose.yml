@@ -64,6 +64,37 @@ services:
       localstack:
         condition: service_healthy
 
+  # O consumer: o segundo programa deste projeto. Nao atende requisicao
+  # nenhuma e nao tem porta — ele so olha a fila e trabalha no que
+  # encontra. Sobe junto com o "docker compose up", como a API.
+  #
+  # Pra ver o que ele esta fazendo:  docker compose logs -f consumer
+  consumer:
+    build:
+      context: .
+      target: consumer
+    environment:
+      DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
+      APP_ENV: ${APP_ENV:-local}
+      SERVICE_NAME: ${SERVICE_NAME:-bootcamp-consumer}
+      # O consumer nao atende requisicao, mas o INTERNAL_TOKEN e exigido
+      # no start (a checagem em src/constants.py vale pros dois programas).
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
+      SQS_ENDPOINT_URL: http://localstack:4566
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+    volumes:
+      # Mesmo codigo montado da mesma forma. Diferenca: o consumer nao
+      # recarrega sozinho — depois de editar, reinicie com
+      # "docker compose restart consumer".
+      - ./src:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+
   db:
     build: ./database/.
     environment:
