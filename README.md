@@ -164,7 +164,7 @@ Repita o comando 2: o `status` virou `success`. E rode este comando 5
 mais uma vez — agora a API recusa:
 
 ```json
-{"title":"Entity cannot change status","description":"Entity with status success cannot update to success.","translation":"Essa entidade nao pode ser atualizada.","code":"QIT001002"}
+{"title":"Entity cannot change status","description":"Entity with status success cannot update to success.","translation":"Essa entidade não pode ser atualizada.","code":"QIT001002"}
 ```
 
 Isso é uma **regra de negócio**, não um erro de digitação: entidade que
@@ -181,7 +181,7 @@ curl -X POST http://localhost:3000/sample_entity \
 ```
 
 ```json
-{"title":"Bad Request","description":"Field required in hello","translation":"Payload Invalido","code":"QIT000001"}
+{"title":"Bad Request","description":"Field required in hello","translation":"Payload Inválido","code":"QIT000001"}
 ```
 
 **400**, e nada foi criado. O `hello` é obrigatório, e quem recusou não
@@ -255,7 +255,7 @@ docker compose exec localstack awslocal sqs list-queues
 A API responde **403** e nem chega a olhar o resto:
 
 ```json
-{"title":"Forbidden","description":"Request must be internal","translation":"Requisicao precisa ser interna","code":"QIT000002"}
+{"title":"Forbidden","description":"Request must be internal","translation":"Requisição precisa ser interna","code":"QIT000002"}
 ```
 
 ### Todas as rotas
@@ -541,7 +541,7 @@ Todo erro da API responde no mesmo formato, com um código próprio:
 {
   "title": "Bad Request",
   "description": "Field required in hello",
-  "translation": "Payload Invalido",
+  "translation": "Payload Inválido",
   "code": "QIT000001"
 }
 ```

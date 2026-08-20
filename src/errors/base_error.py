@@ -1,6 +1,5 @@
 import sys
 import inspect
-from unicodedata import normalize
 
 
 def error_verification():
@@ -27,7 +26,7 @@ class QIException(Exception):
     def __init__(self, title, code, http_status, description, translation) -> None:
         self.title = title
         self.description = description
-        self.translation = normalize("NFKD", translation).encode("ASCII", "ignore").decode("ASCII")
+        self.translation = translation
         self.code = code
         self.http_status = http_status
 
@@ -39,7 +38,7 @@ class MethodNotAllowed(QIException):
         title = "Method not allowed"
         http_status = 405
         description = "The requested method is forbidden for this resource."
-        translation = "O método desejado nao foi encontrado para esse recurso."
+        translation = "O método desejado não foi encontrado para esse recurso."
         super().__init__(title, self.code, http_status, description, translation)
 
 
@@ -50,7 +49,7 @@ class InternalError(QIException):
         title = "Internal Error"
         http_status = 500
         description = "An internal error has occurred and its being investigated."
-        translation = "Um erro interno aconteceu e esta sendo investigado."
+        translation = "Um erro interno aconteceu e está sendo investigado."
         super().__init__(title, self.code, http_status, description, translation)
 
 
