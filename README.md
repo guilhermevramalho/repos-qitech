@@ -42,8 +42,20 @@ Um comando. Só isso, e não precisa criar nem copiar arquivo nenhum
 antes: as configurações já vêm com valor padrão dentro do
 `docker-compose.yml`.
 
-O Docker baixa o Python, sobe o banco, cria as tabelas e liga a API. Na
-primeira vez demora alguns minutos; depois é quase instantâneo.
+O Docker baixa o Python, sobe o banco, sobe a fila, cria as tabelas e
+liga a API — mais o **consumer**, um segundo programa deste projeto que
+não atende requisição nenhuma: ele só olha a fila e trabalha no que
+encontra (seção 1, exemplo 7). Na primeira vez demora alguns minutos;
+depois é quase instantâneo.
+
+São quatro coisas de pé, e vale saber o nome de cada uma:
+
+| Serviço | O que é |
+|---|---|
+| `api` | a API que responde às suas requisições |
+| `db` | o banco de dados (PostgreSQL) |
+| `localstack` | a **fila**. Em produção a QI Tech usa o SQS, da Amazon; aqui o localstack faz o papel dele dentro do seu Docker — sem conta na Amazon, sem cartão |
+| `consumer` | quem tira as mensagens da fila e faz o trabalho |
 
 Quando aparecer `Application startup complete`, a API está no ar. Abra
 no navegador:
@@ -176,6 +188,68 @@ curl -X POST http://localhost:3000/sample_entity \
 foi a regra de negócio: foi o `src/schemas/`, antes da primeira linha da
 rota rodar. Pedido torto não chega a custar uma consulta ao banco.
 
+#### 7. Pedir um processamento — e ver acontecer depois
+
+Este exemplo é diferente de todos os anteriores, e é o mais importante
+deles.
+
+Ele precisa de uma entidade **nova**: a que você vem usando já virou
+`success` no comando 5, e entidade que terminou não muda mais. Rode o
+comando 1 outra vez e use a chave nova nos dois comandos abaixo.
+
+```bash
+curl -i -X POST http://localhost:3000/sample_entity/SUA_CHAVE_NOVA/process \
+  -H "INTERNAL-TOKEN: default_token"
+```
+
+```
+HTTP/1.1 202 Accepted
+{"sample_entity_key":"a1b2c3d4-..."}
+```
+
+**202**, não 200. A diferença é o coração do assunto: `200` quer dizer
+"pronto, feito"; `202` quer dizer **"aceitei o seu pedido e vou fazer"**.
+Quando essa resposta chegou até você, o trabalho ainda não havia
+acontecido — a API só deixou um recado na fila e foi embora atender
+outra pessoa.
+
+Agora repita o comando 2:
+
+```json
+{"hello":"world","status":"success","sample_entity_key":"a1b2c3d4-...","counter":0}
+```
+
+O status virou `success`, e **não foi a API que virou**: foi o consumer,
+o outro programa, que pegou o recado na fila e fez o trabalho. Dá para
+assistir:
+
+```bash
+docker compose logs consumer
+```
+
+```
+[INFO] bootcamp-consumer.consumer - Recebi a mensagem process_sample_entity: {'sample_entity_key': 'a1b2c3d4-...'}
+[INFO] bootcamp-consumer.consumer - Mensagem processada e apagada da fila
+```
+
+Aqui isso leva meio segundo, então talvez você nem pegue o meio do
+caminho. Num sistema de verdade o trabalho pode levar minutos — gerar um
+relatório, falar com um banco, mandar mil e-mails — e é justamente por
+isso que ele não acontece dentro da requisição: ninguém, nem uma pessoa
+nem outro sistema, fica com o telefone na orelha esperando dez minutos.
+
+**Por que isso importa tanto?** Porque muda o que pode dar errado. A
+mensagem já foi aceita, mas o trabalho pode falhar depois — e aí alguém
+precisa tentar de novo. Quem cuida disso, e como, está explicado com
+calma nos comentários de **`src/consumer.py`**. Vale a leitura: é uma
+das coisas que separa código de estudo de código de produção.
+
+Para olhar a fila por dentro, sem instalar nada:
+
+```bash
+docker compose exec localstack awslocal sqs list-queues
+```
+
 #### Esqueceu o `-H "INTERNAL-TOKEN: ..."`?
 
 A API responde **403** e nem chega a olhar o resto:
@@ -186,7 +260,7 @@ A API responde **403** e nem chega a olhar o resto:
 
 ### Todas as rotas
 
-Sete endereços — este é o mapa inteiro da API:
+Oito endereços — este é o mapa inteiro da API:
 
 | Método e rota | O que faz | Responde |
 |---|---|---|
@@ -196,9 +270,10 @@ Sete endereços — este é o mapa inteiro da API:
 | `GET /sample_entity/{key}` | busca uma entidade | `200` + a entidade |
 | `GET /sample_entities` | lista, de dez em dez (`?limit=&page=&status=`) | `200` + a página |
 | `PUT /sample_entity/{key}` | muda o status (`success` ou `failed`) | `202` + o `sample_entity_key` |
+| `POST /sample_entity/{key}/process` | põe o processamento na fila; quem faz é o consumer | `202` + o `sample_entity_key` |
 | `PUT /webhook/sample_entity/{key}/increment_counter` | soma 1 no contador | `204`, sem corpo |
 
-As cinco de baixo exigem o `INTERNAL-TOKEN` (seção 6). As duas de cima
+As seis de baixo exigem o `INTERNAL-TOKEN` (seção 6). As duas de cima
 são abertas — a primeira você já usou: foi ela que respondeu no
 navegador.
 
@@ -218,9 +293,9 @@ docker compose down
 docker compose run --rm tests
 ```
 
-Não precisa ter a API de pé antes: se ela não estiver, este mesmo
-comando sobe o banco, sobe a API, espera os dois responderem e só então
-roda a suíte. Não precisa de Python instalado, nem de `pip`, nem de
+Não precisa ter nada de pé antes: se não estiver, este mesmo comando
+sobe o banco, a fila, a API e o consumer, espera todos responderem e só
+então roda a suíte. Não precisa de Python instalado, nem de `pip`, nem de
 cliente de banco — tudo isso vive dentro do container de testes.
 
 O resultado sai assim:
@@ -228,7 +303,7 @@ O resultado sai assim:
 ```
 tests/integration/test_documentation_disabled.py::TestDocumentationDisabled::test_documentation_endpoints_are_not_served PASSED
 ...
-============================== 17 passed in 0.64s ==============================
+============================== 21 passed in 1.27s ==============================
 ```
 
 Para rodar só um arquivo (ou só um teste), acrescente o caminho:
@@ -245,6 +320,14 @@ Isso tem uma consequência bonita: **este projeto inteiro já foi reescrito
 de um framework para outro, e nenhum teste precisou mudar.** Quando o
 teste descreve o combinado em vez de descrever o código, ele sobrevive à
 reforma.
+
+Um deles tem um problema a mais para resolver:
+`tests/integration/test_sample_entity_process.py` testa o fluxo da fila,
+onde a resposta chega **antes** do trabalho acontecer — não dá para
+conferir na linha seguinte. E também não se resolve com um `sleep`: o
+número certo para ele não existe. O jeito é perguntar de novo até a
+resposta mudar, e é o que o `wait_until` faz (em
+`tests/utils/wait_until.py`).
 
 > **Escreveu um teste novo?** Rode o mesmo comando. O `tests/` da sua
 > máquina está montado dentro do container: o que você salva agora vale
@@ -334,7 +417,9 @@ Para ver o que a API está dizendo enquanto roda: `docker compose logs -f api`.
 ```
 src/
   app.py           ← liga tudo: rotas, middlewares e tratamento de erro
+  consumer.py      ← o outro programa: tira mensagens da fila e trabalha
   database.py      ← a conexão com o banco
+  sqs.py           ← a conexão com a fila
   constants.py     ← as configurações, lidas do ambiente
 
   routers/         ← recebe a requisição HTTP e devolve a resposta
@@ -368,6 +453,17 @@ negócio. Quando você precisa trocar o banco, mexe numa pasta. Quando a
 regra muda, mexe na outra. É isso que permite um time inteiro trabalhar
 no mesmo projeto sem pisar no pé um do outro.
 
+O `consumer.py` entra por outra porta e chega no mesmo lugar:
+
+```
+mensagem na fila → consumer → controller → repository → banco
+```
+
+Ele não tem router nem schema — não existe requisição HTTP para validar.
+Do controller em diante, é o **mesmo caminho**: a regra de negócio é uma
+só, não importa se o pedido chegou por uma requisição ou por uma
+mensagem. Regra duplicada é regra que vai divergir.
+
 Isso responde ao "por quê". Falta a outra metade — **"onde eu mexo
 quando quero fazer X?"** —, e ela está em
 **[docs/como-o-projeto-e-organizado.md](docs/como-o-projeto-e-organizado.md)**:
@@ -399,6 +495,24 @@ Uma ressalva honesta: valor padrão de senha em arquivo versionado só
 vale porque aqui é um projeto de estudo, sem dado de ninguém. Em
 sistema de verdade, segredo não tem padrão — ele falta, e a aplicação
 se recusa a subir sem ele.
+
+### E aquela chave da Amazon no `docker-compose.yml`?
+
+Você vai ver isto lá:
+
+```yaml
+AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+```
+
+Chave de nuvem em arquivo versionado é exatamente o que o parágrafo
+acima proíbe — e aqui está tudo bem, por um motivo específico: **essa
+chave não abre nada.** Quem responde do outro lado é o `localstack`, na
+sua máquina, e ele não confere o valor. Não existe conta na Amazon neste
+projeto, e não há o que vazar.
+
+Repare no que isso ensina: o que decide se um valor é segredo não é o
+nome dele, é o que ele abre. `AWS_ACCESS_KEY_ID` **parece** perigoso e
+não é; o `DATABASE_URL` de um banco de produção **não parece** e é.
 
 ---
 
