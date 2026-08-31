@@ -33,7 +33,11 @@ def qi_exception_to_response(exception: QIException) -> JSONResponse:
 
 
 def describe_validation_error(error: dict) -> str:
-    location = [str(part) for part in error.get("loc", []) if part not in ("body", "query")]
+    location = []
+    for part in error.get("loc", []):
+        if part not in ("body", "query"):
+            location.append(str(part))
+
     message = error.get("msg", "invalid value")
 
     if location:
@@ -63,7 +67,12 @@ def register_error_handlers(application: FastAPI) -> None:
     @application.exception_handler(RequestValidationError)
     def handle_validation_error(request: Request, exception: RequestValidationError) -> JSONResponse:
         errors = exception.errors()
-        first_error = errors[0] if errors else {}
+
+        if errors:
+            first_error = errors[0]
+        else:
+            first_error = {}
+
         description = describe_validation_error(first_error)
         origin = first_error.get("loc", [""])[0]
 
