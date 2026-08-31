@@ -303,7 +303,7 @@ O resultado sai assim:
 ```
 tests/integration/test_documentation_disabled.py::TestDocumentationDisabled::test_documentation_endpoints_are_not_served PASSED
 ...
-============================== 21 passed in 1.27s ==============================
+============================== 23 passed in 1.28s ==============================
 ```
 
 Para rodar só um arquivo (ou só um teste), acrescente o caminho:
@@ -355,7 +355,7 @@ apontar para a porta em que o banco está publicado na sua máquina.
 
 ## 3. Quando dá errado
 
-Os três tropeços mais comuns, com a mensagem que você vai ver:
+Os tropeços mais comuns, com a mensagem que você vai ver:
 
 ### `port is already allocated`
 
@@ -397,6 +397,34 @@ espere ficar verde. No Linux: `sudo systemctl start docker`.
 Só aparece no atalho local (fora do Docker). Quer dizer que a API ou o
 banco não estão de pé, ou que a porta no seu `.env` não é a que eles
 estão usando. Suba com `docker compose up` e confira as portas.
+
+### `relation "..." does not exist`
+
+```
+psycopg2.errors.UndefinedTable: relation "minha_tabela" does not exist
+```
+
+Você mexeu no `database/database.sql`, e o banco não ficou sabendo.
+Aquele arquivo roda **uma vez só: quando o banco nasce.** Depois disso o
+Postgres nunca mais olha para ele — subir de novo com `docker compose
+up` não adianta, e `docker compose restart db` também não.
+
+Repare no que a mensagem faz com você: ela não diz "seu SQL não rodou",
+diz que a tabela não existe. Você vai reler o seu SQL procurando um erro
+de digitação que não está lá.
+
+Para o banco nascer de novo, já com o schema novo:
+
+```bash
+docker compose down -v
+docker compose up
+```
+
+O `-v` é o que apaga o volume — o disco do banco. **Ele leva junto tudo
+que você tinha criado na mão**, as entidades dos `curl` da seção 1. Não
+tem meio-termo: ou o banco nasce de novo com o schema novo, ou continua
+com o antigo. (Em sistema de verdade é outra história — lá ninguém apaga
+o banco, e a mudança de schema entra por um comando aplicado no deploy.)
 
 ### Nada disso resolveu?
 

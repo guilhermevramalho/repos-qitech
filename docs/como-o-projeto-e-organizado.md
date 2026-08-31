@@ -1,6 +1,6 @@
 # Como o projeto é organizado
 
-Dentro de `src/` tem nove pastas. Para um programa que responde sete
+Dentro de `src/` tem nove pastas. Para um programa que responde oito
 endereços, parece muita pasta — e no começo assusta mesmo.
 
 Este texto explica por que elas existem, o que cada uma pode e não pode
@@ -86,20 +86,59 @@ isso não é regra — é jeito de buscar.
 | **criar uma entidade inteira** (rota + regra + tabela) | um arquivo em cada pasta | `database.sql` → `models/` → `repositories/` → `controllers/` → `schemas/` → `routers/` → registrar em `src/app.py` |
 | **fazer algo em toda requisição** | `src/middlewares/` | registrar em `src/app.py` |
 
-Duas armadilhas que pegam quase todo mundo:
+Três armadilhas que pegam quase todo mundo. As duas últimas custam caro
+pelo mesmo motivo: a mensagem de erro aponta para o sintoma, não para a
+causa.
 
 **Criou um arquivo e o Python diz que não existe?** Cada pasta tem um
 `__init__.py` que lista o que ela oferece. Abra o da pasta (por exemplo
 `src/repositories/__init__.py`) e acrescente a sua linha.
 
+**E a ORDEM das linhas do `src/models/__init__.py` importa.** Abra
+`src/models/sample_entity.py` e repare no `from models import
+SampleEntityStatus`: o arquivo importa de dentro do próprio pacote em
+que ele mora. Isso só funciona porque o `__init__.py` lista o
+`SampleEntityStatus` **antes** do `SampleEntity` — quando a linha do
+`SampleEntity` roda, o status já foi carregado.
+
+Inverta as duas linhas e o Python responde:
+
+```
+ImportError: cannot import name 'SampleEntityStatus' from partially
+initialized module 'models' (most likely due to a circular import)
+```
+
+A mensagem culpa uma "importação circular", que não é bem o que
+aconteceu — e você vai procurar um ciclo que não existe. A regra é
+simples: **entidade nova que se relaciona com outra entra no
+`__init__.py` depois daquela de que ela depende.**
+
 **Mexeu no `database/database.sql` e nada mudou?** Aquele arquivo roda
-uma vez só: quando o banco **nasce**. Para recriar do zero — apagando
-tudo que estava lá dentro:
+uma vez só: **quando o banco nasce**. Depois disso o Postgres nunca mais
+olha para ele — nem no `docker compose up` seguinte, nem num
+`docker compose restart db`. O sintoma aparece longe daí, na resposta da
+API ou no log:
+
+```
+psycopg2.errors.UndefinedTable: relation "minha_tabela" does not exist
+```
+
+Ela não diz "seu SQL não rodou": diz que a tabela não existe. Dá vontade
+de reler o SQL procurando erro de digitação, e não tem nenhum.
+
+Para o banco nascer de novo, com o schema novo:
 
 ```bash
 docker compose down -v
 docker compose up
 ```
+
+O `-v` é o que apaga o volume, o disco do banco — e **ele leva junto
+tudo que você criou na mão** até aqui. Não tem meio-termo: ou o banco
+nasce de novo com o schema novo, ou continua com o antigo. Em sistema de
+verdade ninguém apaga o banco, claro: lá a mudança de schema entra por
+um comando aplicado no deploy, e é por isso que este projeto guarda o
+schema num arquivo versionado em vez de deixá-lo só dentro do banco.
 
 ---
 
