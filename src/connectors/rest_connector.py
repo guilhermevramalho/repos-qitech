@@ -95,5 +95,3 @@ class BaseConnectorResponse:
             self.json = json.loads(response.content)
         except ValueError:
             pass
-
-
