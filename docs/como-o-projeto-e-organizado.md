@@ -1,6 +1,6 @@
 # Como o projeto é organizado
 
-Dentro de `src/` tem nove pastas. Para um programa que responde oito
+Dentro de `src/` tem dez pastas. Para um programa que responde oito
 endereços, parece muita pasta — e no começo assusta mesmo.
 
 Este texto explica por que elas existem, o que cada uma pode e não pode
@@ -61,6 +61,7 @@ este texto.
 | `dtos/` | transformar o objeto do banco no dicionário que vira a resposta | buscar coisa no banco, decidir regra |
 | `errors/` | definir cada erro: código, mensagem e status HTTP | ter regra de negócio dentro |
 | `middlewares/` | fazer algo em **toda** requisição (token, log, cabeçalho) | conhecer uma rota específica |
+| `connectors/` | chamar um serviço de fora: endereço, timeout e o desembrulho da resposta | decidir regra de negócio, falar com o nosso banco |
 | `utils/` | ferramenta de uso geral — aqui, só o logger | virar o depósito do que não se sabe onde pôr |
 
 Um exemplo do que isso significa na prática: em
@@ -85,6 +86,7 @@ isso não é regra — é jeito de buscar.
 | **criar uma tabela** | `database/database.sql` | depois `src/models/` e o `__init__.py` da pasta |
 | **criar uma entidade inteira** (rota + regra + tabela) | um arquivo em cada pasta | `database.sql` → `models/` → `repositories/` → `controllers/` → `schemas/` → `routers/` → registrar em `src/app.py` |
 | **fazer algo em toda requisição** | `src/middlewares/` | registrar em `src/app.py` |
+| **chamar outro serviço** | `src/connectors/` | quem chama o connector é o controller, nunca o router |
 
 Três armadilhas que pegam quase todo mundo. As duas últimas custam caro
 pelo mesmo motivo: a mensagem de erro aponta para o sintoma, não para a
