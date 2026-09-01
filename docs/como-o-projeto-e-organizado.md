@@ -20,12 +20,12 @@ Este é o `POST /sample_entity`, que cria uma entidade:
 ```
   requisição chega
         ↓
-  src/middlewares/     quatro camadas, de fora para dentro: cabeçalhos
+  src/middlewares/     cinco camadas, de fora para dentro: cabeçalhos
         ↓              de segurança → identificador único da requisição
         ↓              → log de entrada → INTERNAL-TOKEN (sem ele, para
-        ↓              aqui: 403). A ordem está comentada em src/app.py,
-        ↓              onde ela aparece de trás pra frente — o comentário
-        ↓              de lá explica por quê
+        ↓              aqui: 403) → sessão de banco. A ordem está
+        ↓              comentada em src/app.py, onde ela aparece de trás
+        ↓              pra frente — o comentário de lá explica por quê
         ↓
   src/routers/         que endereço é esse? quem cuida dele?
         ↓              (antes da 1ª linha da rota rodar, src/schemas/
@@ -65,7 +65,7 @@ este texto.
 | `models/` | descrever as tabelas em Python | ter regra dentro |
 | `dtos/` | transformar o objeto do banco no dicionário que vira a resposta | buscar coisa no banco, decidir regra |
 | `errors/` | definir cada erro: código, mensagem e status HTTP | ter regra de negócio dentro |
-| `middlewares/` | fazer algo em **toda** requisição (token, log, cabeçalho, identificador) | conhecer uma rota específica |
+| `middlewares/` | fazer algo em **toda** requisição (token, log, cabeçalho, identificador, sessão de banco) | conhecer uma rota específica |
 | `connectors/` | chamar um serviço de fora: endereço, timeout e o desembrulho da resposta | decidir regra de negócio, falar com o nosso banco |
 | `utils/` | ferramenta de uso geral — aqui, o logger e o identificador da requisição | virar o depósito do que não se sabe onde pôr |
 
@@ -76,6 +76,55 @@ frase é a regra do negócio, e ela mora no controller. Em
 `src/repositories/sample_entity_repository.py` não existe nenhuma frase
 dessas: o único `if` de lá decide se a busca leva um filtro a mais, e
 isso não é regra — é jeito de buscar.
+
+### "E a conexão com o banco, em qual pasta ela mora?"
+
+Em duas, e a divisão é o assunto mais interessante deste texto.
+
+Quem fala com o banco fala por uma **sessão**: um rascunho onde as
+mudanças ficam guardadas até alguém mandar salvar. Ela precisa nascer no
+início da requisição e morrer no fim, sempre — inclusive quando a rota
+explode no meio. Duas perguntas diferentes, então:
+
+- **Quem cuida do ciclo de vida?** `src/middlewares/session_manager.py`.
+  Abre, desfaz se deu errado, fecha sempre — e **nunca salva**.
+- **Quem entrega a sessão para a rota?** O `get_db`, em
+  `src/database.py`, que a rota pede escrevendo
+  `db: Session = Depends(get_db)`.
+
+A separação não é capricho: middleware sabe olhar a requisição e mexer
+na resposta, mas **não tem como entregar um objeto para a rota**. Quem
+faz isso no FastAPI é a *dependency*. Por isso as duas peças existem.
+
+**Por que o ciclo virou middleware.** Dava para deixar tudo no `get_db`
+— e por um tempo foi assim. O motivo da troca não é técnico: "onde a
+sessão de banco nasce e morre?" é uma pergunta que se responde olhando a
+lista de middlewares, e é lá que as pessoas procuram. Um projeto de
+estudo que ensina um caminho diferente do que se encontra no trabalho
+ensina uma coisa a mais para desaprender depois.
+
+**O que isso custou, e como o custo foi pago.** Middleware atende TODA
+requisição, inclusive o `/health_check` que o Docker consulta a cada três
+segundos — e seria ruim que o health check passasse a depender do banco
+estar de pé. Por isso o middleware não abre nada: ele só deixa o lugar
+preparado, e a sessão só nasce quando alguma rota pede pelo `get_db`. A
+rota que não usa banco continua sem tocar no banco.
+
+O preço dessa preguiça é que a sessão passou a ser **opcional** — pode
+não existir —, e todo `close` e todo `rollback` precisa perguntar antes
+de agir. Esquecer essa pergunta derruba justamente as rotas que não usam
+banco, com as rotas de banco seguindo verdes. Aconteceu enquanto este
+middleware era escrito; a história está na docstring dele, e
+`tests/integration/test_session_manager.py` existe para que não volte.
+
+**E o `commit`?** Nunca é do middleware. Quem sabe se o trabalho terminou
+é o controller, e é por isso que `self.session.commit()` é a última linha
+antes do `return` em `src/controllers/sample_entity_controller.py`. O
+middleware cuida do ciclo de vida; o controller decide o conteúdo.
+
+Abra os dois arquivos na ordem — o middleware primeiro, o `database.py`
+depois. São poucas linhas de código cada um, e juntas elas dizem o
+combinado inteiro.
 
 ---
 

@@ -360,7 +360,7 @@ O resultado sai assim:
 ```
 tests/integration/test_documentation_disabled.py::TestDocumentationDisabled::test_documentation_endpoints_are_not_served PASSED
 ...
-============================== 29 passed in 1.28s ==============================
+============================== 31 passed in 1.50s ==============================
 ```
 
 Para rodar só um arquivo (ou só um teste), acrescente o caminho:
@@ -503,7 +503,8 @@ Para ver o que a API está dizendo enquanto roda: `docker compose logs -f api`.
 src/
   app.py           ← liga tudo: rotas, middlewares e tratamento de erro
   consumer.py      ← o outro programa: tira mensagens da fila e trabalha
-  database.py      ← a conexão com o banco
+  database.py      ← entrega a sessão de banco à rota (quem cuida do
+                     ciclo dela é middlewares/session_manager.py)
   sqs.py           ← a conexão com a fila
   constants.py     ← as configurações, lidas do ambiente
 
