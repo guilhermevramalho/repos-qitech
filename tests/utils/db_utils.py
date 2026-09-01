@@ -15,11 +15,7 @@ RESET_QUERIES = [
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_FILE = PROJECT_ROOT / "database" / "database.sql"
 
-MISSING_DATABASE_URL = (
-    "A variável DATABASE_URL não está definida.\n"
-    "Rodando com 'docker compose run --rm tests' ela já vem preenchida.\n"
-    "Fora do Docker, copie o arquivo de exemplo:  cp .env.example .env"
-)
+DEFAULT_DATABASE_URL = "postgresql+psycopg2://bootcamp:bootcamp@localhost:5432/bootcamp"
 
 DATABASE_OFFLINE = (
     "Não consegui falar com o banco em {host}:{port}.\n"
@@ -56,11 +52,7 @@ class DbUtils:
 
     @staticmethod
     def database_url() -> str:
-        url = environ.get("DATABASE_URL")
-        if not url:
-            raise RuntimeError(MISSING_DATABASE_URL)
-
-        return url
+        return environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
 
     @staticmethod
     def rollback() -> None:

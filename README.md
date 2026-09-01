@@ -393,20 +393,33 @@ resposta mudar, e é o que o `wait_until` faz (em
 ### Atalho para quem já tem Python 3.11 (opcional)
 
 Roda um pouco mais rápido, e o erro aparece direto no seu editor. Exige
-Python na sua máquina — por isso é atalho, não o caminho principal:
+Python na sua máquina — por isso é atalho, não o caminho principal.
+
+Rode os comandos **na raiz do projeto** — a pasta onde está este
+README. É de lá que o `pytest` encontra a suíte inteira:
 
 ```bash
-cp .env.example .env
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 pytest -v
 ```
 
-Só aqui o `.env` **é** obrigatório: fora do Docker ninguém preenche as
-variáveis por você. Além dele, a API precisa estar de pé (`docker
-compose up` em outro terminal), e o `DATABASE_URL` do `.env` precisa
-apontar para a porta em que o banco está publicado na sua máquina.
+**O atalho é só do Python: o Docker continua obrigatório.** Os testes
+batem numa API de verdade, que grava num banco de verdade e manda
+recado por uma fila de verdade — e nada disso roda na sua máquina.
+Deixe `docker compose up` de pé em outro terminal: não basta a API, o
+banco e o consumer também precisam estar no ar (sem alguém consumindo
+a fila, o teste do fluxo assíncrono espera para sempre).
+
+Aqui o `.env` é **opcional**: sem ele, os testes procuram a API em
+`0.0.0.0:3000` e o banco em `localhost:5432` — exatamente onde o
+`docker compose up` publica os dois. Ele volta a ser necessário quando
+você mudou alguma porta ou o token, e é o lugar de dizer isso:
+
+```bash
+cp .env.example .env
+```
 
 ---
 

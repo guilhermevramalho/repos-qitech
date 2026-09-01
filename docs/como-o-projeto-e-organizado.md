@@ -142,9 +142,10 @@ combinado inteiro.
 | **fazer algo em toda requisição** | `src/middlewares/` | registrar em `src/app.py` |
 | **chamar outro serviço** | `src/connectors/` | quem chama o connector é o controller, nunca o router |
 
-Três armadilhas que pegam quase todo mundo. As duas últimas custam caro
-pelo mesmo motivo: a mensagem de erro aponta para o sintoma, não para a
-causa.
+Quatro armadilhas que pegam quase todo mundo. A segunda e a terceira
+custam caro pelo mesmo motivo: a mensagem de erro aponta para o
+sintoma, não para a causa. A quarta é pior ainda — nela não vem
+mensagem nenhuma.
 
 **Criou um arquivo e o Python diz que não existe?** Cada pasta tem um
 `__init__.py` que lista o que ela oferece. Abra o da pasta (por exemplo
@@ -195,6 +196,32 @@ nasce de novo com o schema novo, ou continua com o antigo. Em sistema de
 verdade ninguém apaga o banco, claro: lá a mudança de schema entra por
 um comando aplicado no deploy, e é por isso que este projeto guarda o
 schema num arquivo versionado em vez de deixá-lo só dentro do banco.
+
+**Mexeu numa dependência e o `docker compose build` passou?** Ele passa
+mesmo — sem ter construído os testes uma única vez. O serviço `tests`
+tem `profiles: ["test"]` no `docker-compose.yml`, e é isso que o mantém
+fora do build padrão: o comando monta a API e o consumer, termina com
+sucesso, e você fica com a impressão de que está tudo de pé. O
+`docker compose run --rm tests` seguinte também não desmente — ele
+reaproveita a imagem de teste que já existe na sua máquina, mesmo que
+ela tenha sido montada semanas atrás.
+
+O resultado é o pior tipo de erro: ele não acontece com você, acontece
+com quem clonar o projeto do zero. O build que de fato valida a suíte
+pede o perfil:
+
+```bash
+docker compose --profile test build tests
+```
+
+E quando o que você mexeu foi dependência (`requirements.txt` ou
+`requirements-dev.txt`), acrescente o `--no-cache` — sem ele o Docker
+reaproveita a camada do `pip install`, que é justamente a que você
+precisa ver rodar de novo:
+
+```bash
+docker compose --profile test build --no-cache tests
+```
 
 ---
 
