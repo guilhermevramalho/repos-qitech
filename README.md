@@ -458,6 +458,7 @@ src/
   dtos/            ← traduz o objeto do banco no JSON que sai
   errors/          ← os erros da API, cada um com seu código
   middlewares/     ← o que acontece com TODA requisição
+  connectors/      ← as conversas com outros serviços
 
 database/
   database.sql     ← as tabelas, em SQL puro
