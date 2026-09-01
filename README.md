@@ -258,6 +258,63 @@ A API responde **403** e nem chega a olhar o resto:
 {"title":"Forbidden","description":"Request must be internal","translation":"Requisição precisa ser interna","code":"QIT000002"}
 ```
 
+#### Toda resposta vem com um número de protocolo
+
+Repare no `-i` deste comando: ele mostra os **cabeçalhos** da resposta,
+não só o corpo.
+
+```bash
+curl -i "http://localhost:3000/sample_entities?limit=1" \
+  -H "INTERNAL-TOKEN: default_token"
+```
+
+```
+HTTP/1.1 200 OK
+content-type: application/json
+x-request-id: 8f3c1e42-1b0d-4f77-9a55-2e4c9d1f0abc
+server: undisclosed
+...
+```
+
+Esse `x-request-id` é o **número de protocolo** da sua requisição: um
+nome único, criado no instante em que ela chegou. Copie o seu e procure
+por ele no log:
+
+```bash
+docker compose logs api | grep 8f3c1e42
+```
+
+```
+[INFO] bootcamp-api.middlewares.request_logger [8f3c1e42-...] - ENTROU GET /sample_entities?limit=1
+[INFO] bootcamp-api.middlewares.request_logger [8f3c1e42-...] - SAIU 200 GET /sample_entities - 2.9 ms
+```
+
+Duas linhas, o mesmo nome nas duas — e nenhuma outra requisição usa esse
+nome. Serve para o dia em que alguém disser "deu erro por volta das
+14h30": sem o número, você abre o log e encontra mil linhas parecidas, de
+mil requisições diferentes, embaralhadas, porque a API atende várias ao
+mesmo tempo e o log é um só. Com o número, achar a agulha é um `grep`.
+
+Se quem chamou já mandar um `x-request-id`, a API **respeita o que veio**
+e usa o mesmo — é assim que se segue um único pedido atravessando vários
+sistemas:
+
+```bash
+curl -i "http://localhost:3000/sample_entities?limit=1" \
+  -H "INTERNAL-TOKEN: default_token" \
+  -H "X-Request-ID: meu-teste-1"
+```
+
+Experimente mandar um valor esquisito nesse cabeçalho — com espaços, ou
+bem comprido. A API não devolve o que você mandou: ela troca por um novo.
+O porquê está em `src/utils/request_context.py`, e é uma das poucas
+lições de segurança que cabem em cinco linhas.
+
+> Só o `/` e o `/health_check` não aparecem no log: o Docker consulta o
+> health check a cada três segundos, e sem essa exceção o log seria
+> quase só isso. Eles ganham o `x-request-id` como todo mundo — o que
+> não ganham é a linha de log.
+
 ### Todas as rotas
 
 Oito endereços — este é o mapa inteiro da API:
@@ -303,7 +360,7 @@ O resultado sai assim:
 ```
 tests/integration/test_documentation_disabled.py::TestDocumentationDisabled::test_documentation_endpoints_are_not_served PASSED
 ...
-============================== 23 passed in 1.28s ==============================
+============================== 29 passed in 1.28s ==============================
 ```
 
 Para rodar só um arquivo (ou só um teste), acrescente o caminho:

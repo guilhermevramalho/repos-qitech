@@ -20,7 +20,12 @@ Este é o `POST /sample_entity`, que cria uma entidade:
 ```
   requisição chega
         ↓
-  src/middlewares/     confere o INTERNAL-TOKEN. Sem ele, para aqui (403)
+  src/middlewares/     quatro camadas, de fora para dentro: cabeçalhos
+        ↓              de segurança → identificador único da requisição
+        ↓              → log de entrada → INTERNAL-TOKEN (sem ele, para
+        ↓              aqui: 403). A ordem está comentada em src/app.py,
+        ↓              onde ela aparece de trás pra frente — o comentário
+        ↓              de lá explica por quê
         ↓
   src/routers/         que endereço é esse? quem cuida dele?
         ↓              (antes da 1ª linha da rota rodar, src/schemas/
@@ -60,9 +65,9 @@ este texto.
 | `models/` | descrever as tabelas em Python | ter regra dentro |
 | `dtos/` | transformar o objeto do banco no dicionário que vira a resposta | buscar coisa no banco, decidir regra |
 | `errors/` | definir cada erro: código, mensagem e status HTTP | ter regra de negócio dentro |
-| `middlewares/` | fazer algo em **toda** requisição (token, log, cabeçalho) | conhecer uma rota específica |
+| `middlewares/` | fazer algo em **toda** requisição (token, log, cabeçalho, identificador) | conhecer uma rota específica |
 | `connectors/` | chamar um serviço de fora: endereço, timeout e o desembrulho da resposta | decidir regra de negócio, falar com o nosso banco |
-| `utils/` | ferramenta de uso geral — aqui, só o logger | virar o depósito do que não se sabe onde pôr |
+| `utils/` | ferramenta de uso geral — aqui, o logger e o identificador da requisição | virar o depósito do que não se sabe onde pôr |
 
 Um exemplo do que isso significa na prática: em
 `src/controllers/sample_entity_controller.py` você lê
