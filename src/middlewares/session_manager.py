@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Request
 
+from database import clear_session_context, open_session_context
+
 
 def register_session_manager_middleware(application: FastAPI) -> None:
     """Cuida da conversa com o banco do começo ao fim de cada requisição.
@@ -62,8 +64,8 @@ def register_session_manager_middleware(application: FastAPI) -> None:
     1. **Uma lista de exceções**, como a BYPASS_ENDPOINTS que o
        internal_token e o request_logger usam.
     2. **Não abrir nada até alguém pedir** — que é o que está escrito
-       aqui embaixo: o middleware só zera o `request.state.db`, e quem
-       cria a sessão, se a rota pedir, é o `get_db`.
+       aqui embaixo: o middleware só deixa o balcão preparado, e quem
+       cria a sessão, se algum controller pedir, é o `get_session`.
 
     Ficou o segundo, por dois motivos. O primeiro é que a
     BYPASS_ENDPOINTS responde a OUTRA pergunta: ela diz "esta rota é
@@ -73,21 +75,27 @@ def register_session_manager_middleware(application: FastAPI) -> None:
     aparece longe daqui. Criar uma segunda lista, quase igual à primeira,
     só muda qual das duas alguém vai esquecer de atualizar.
 
-    O segundo é que a resposta já está escrita num lugar melhor: na
-    própria rota. `db: Session = Depends(get_db)` é a rota dizendo "eu
-    uso banco". Não há lista pra manter, e rota nova acerta sozinha.
+    O segundo é que a resposta já está escrita num lugar melhor: no
+    próprio código que vai usar o banco. Construir um controller é dizer
+    "eu uso banco" — e o `/` e o /health_check não constroem nenhum. Não
+    há lista pra manter, e rota nova acerta sozinha.
+
+    Repare no que se perdeu nessa troca, porque é honesto dizer: antes a
+    DECLARAÇÃO estava na assinatura da rota, à vista de quem lesse só o
+    arquivo de rotas. Agora ela está um andar mais fundo. Ganhamos uma
+    lista a menos e pagamos com um salto a mais pro leitor.
 
     ────────────────────────────────────────────────────────────────
     A ARMADILHA: SESSÃO QUE PODE NÃO EXISTIR
     ────────────────────────────────────────────────────────────────
     Os dois caminhos acima cobram o mesmo preço, e ele está nas duas
-    perguntas `if request.state.db is not None` logo abaixo. Elas parecem
+    perguntas `if holder.session is not None` logo abaixo. Elas parecem
     burocracia e não são: sem elas, a API quebra. Este projeto rodou o
     erro de propósito, com a lista de exceções e um `finally`
     desprotegido:
 
         finally:
-            request.state.db.close()
+            holder.session.close()
 
         GET /                    -> 500
         GET /health_check        -> 500
@@ -148,19 +156,27 @@ def register_session_manager_middleware(application: FastAPI) -> None:
       rota que devolvesse um fluxo lendo do banco aos poucos encontraria
       a sessão já fechada, e essa rota precisaria de outro desenho.
 
-    E há um detalhe do FastAPI que fecha o quadro: quem ENTREGA a sessão
-    para a rota continua sendo o `get_db`, porque middleware sabe olhar a
-    requisição e mexer na resposta, mas não tem como passar um objeto
-    adiante — só a dependency tem. O que mudou é que o `get_db` deixou de
-    ser dono do ciclo de vida e virou um balcão de retirada. O resto da
-    história está em src/database.py.
+    E há um detalhe que fecha o quadro, porque ele contraria o que este
+    arquivo dizia até pouco tempo atrás. Middleware realmente não tem
+    como ENTREGAR um objeto para a rota — isso continua sendo verdade.
+    Mas ele não precisa entregar: basta DEIXAR num lugar combinado, e
+    quem vier depois pega. O lugar é o contexto (`contextvars`), o mesmo
+    caminho por onde o `request_id` deste projeto já viajava.
+
+    Por isso a linha aqui embaixo abre um contexto em vez de escrever no
+    `request.state`: o `request.state` só serve a quem tem uma
+    requisição, e o consumer não tem nenhuma. Compare este bloco com o
+    `process_message` do src/consumer.py — os dois ficaram quase
+    idênticos, e é de propósito.
+
+    O resto da história está em src/database.py.
     """
 
     @application.middleware("http")
     async def manage_session(request: Request, call_next):
         # A requisição começa sem sessão nenhuma, e pode terminar assim.
-        # Quem cria é o get_db, se a rota pedir.
-        request.state.db = None
+        # Quem cria é o get_session, se algum controller pedir.
+        holder = open_session_context()
 
         try:
             response = await call_next(request)
@@ -176,14 +192,19 @@ def register_session_manager_middleware(application: FastAPI) -> None:
             # fica assim mesmo, dizendo a intenção em voz alta: o dia em
             # que alguém trocar o que vem depois, o combinado continua
             # escrito.
-            if request.state.db is not None:
-                request.state.db.rollback()
+            if holder.session is not None:
+                holder.session.rollback()
             raise
         finally:
             # Sempre. Deu certo, deu 404, explodiu: a conexão volta pro
             # pool nesta linha. E repare na pergunta antes do ponto: ela
             # é a guarda da armadilha contada na docstring.
-            if request.state.db is not None:
-                request.state.db.close()
+            if holder.session is not None:
+                holder.session.close()
+
+            # E o balcão sai do contexto. Fora de uma requisição, pedir
+            # uma sessão tem que falhar alto — não devolver a desta aqui,
+            # já fechada.
+            clear_session_context()
 
         return response

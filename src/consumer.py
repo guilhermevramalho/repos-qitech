@@ -3,7 +3,7 @@ import traceback
 
 from constants import check_variables
 from controllers import SampleEntityController
-from database import SessionLocal
+from database import clear_session_context, open_session_context
 from errors.base_error import error_verification
 from sqs import PROCESS_SAMPLE_ENTITY, create_queue, delete_message, receive_messages
 from utils.logger import get_logger, setup_logging
@@ -21,26 +21,57 @@ def process_message(message: dict) -> None:
     O `MessageType` diz qual regra chamar. Aqui existe um tipo só, e
     ainda assim o `else` no fim importa: mensagem de tipo desconhecido
     é um erro, não uma mensagem pra ignorar em silêncio.
+
+    ────────────────────────────────────────────────────────────────
+    POR QUE ESTE BLOCO PARECE TANTO COM O MIDDLEWARE DA SESSÃO
+    ────────────────────────────────────────────────────────────────
+    Porque é a mesma coisa, e agora dá pra ver.
+
+    O controller que roda aqui é o MESMO que a rota HTTP chama, e ele
+    pede a sessão ao contexto do trabalho em que está. Numa requisição,
+    quem prepara esse contexto é o src/middlewares/session_manager.py.
+    Aqui não existe requisição nenhuma — então quem prepara é este
+    arquivo, na unha.
+
+    Abra os dois lado a lado: abre o contexto, roda o trabalho, rollback
+    se explodiu, close sempre, limpa o contexto. As mesmas cinco linhas.
+    O consumer é o session_manager escrito à mão.
     """
     message_type = message["MessageAttributes"]["MessageType"]["StringValue"]
     message_body = json.loads(message["Body"])
 
     logger.info(f"Recebi a mensagem {message_type}: {message_body}")
 
-    session = SessionLocal()
+    holder = open_session_context()
 
     try:
-        controller = SampleEntityController(session)
+        controller = SampleEntityController()
 
         if message_type == PROCESS_SAMPLE_ENTITY:
             controller.consumer_process_sample_entity(message_body)
         else:
             raise Exception(f"Nao sei o que fazer com uma mensagem do tipo '{message_type}'")
     except Exception:
-        session.rollback()
+        # As duas perguntas `is not None` aqui são quase sempre
+        # verdadeiras: o controller é construído na primeira linha do
+        # `try` e já pede a sessão. Ficam mesmo assim, pelo mesmo motivo
+        # que o rollback do middleware fica — o combinado continua
+        # escrito pro dia em que a ordem daqui mudar.
+        if holder.session is not None:
+            holder.session.rollback()
         raise
     finally:
-        session.close()
+        if holder.session is not None:
+            holder.session.close()
+
+        # Esta linha importa MAIS aqui do que no middleware. O consumer é
+        # um processo só, num laço eterno: sem limpar, entre uma mensagem
+        # e a outra o contexto continuaria apontando pra um balcão com a
+        # sessão já fechada. E sessão fechada do SQLAlchemy não reclama —
+        # ela reabre sozinha na próxima query, tomando uma conexão que
+        # ninguém mais fecharia. Vazamento silencioso, no processo que
+        # roda pra sempre.
+        clear_session_context()
 
 
 def run() -> None:
