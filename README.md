@@ -516,8 +516,8 @@ Para ver o que a API está dizendo enquanto roda: `docker compose logs -f api`.
 src/
   app.py           ← liga tudo: rotas, middlewares e tratamento de erro
   consumer.py      ← o outro programa: tira mensagens da fila e trabalha
-  database.py      ← entrega a sessão de banco à rota (quem cuida do
-                     ciclo dela é middlewares/session_manager.py)
+  database.py      ← onde a sessão de banco mora (quem cuida do ciclo
+                     dela é middlewares/session_manager.py)
   sqs.py           ← a conexão com a fila
   constants.py     ← as configurações, lidas do ambiente
 

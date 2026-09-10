@@ -1,5 +1,3 @@
-from sqlalchemy.orm import Session
-
 from controllers.base_controller import BaseController
 from dtos import SampleEntityDTO
 from errors import NotFoundSampleEntity, SampleEntityFinalStatus
@@ -20,9 +18,9 @@ CHANGEABLE_STATUS = "pending"
 class SampleEntityController(BaseController):
     """As regras de negócio. Aqui mora o "pode" e o "não pode"."""
 
-    def __init__(self, db: Session) -> None:
-        super().__init__(db, __name__)
-        self.sample_entity_repository = SampleEntityRepository(db)
+    def __init__(self) -> None:
+        super().__init__(__name__)
+        self.sample_entity_repository = SampleEntityRepository(self.session)
 
     def create(self, sample_entity_data: dict) -> dict:
         self.logger.debug("Criando uma nova Sample Entity")

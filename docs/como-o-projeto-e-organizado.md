@@ -88,27 +88,44 @@ explode no meio. Duas perguntas diferentes, então:
 
 - **Quem cuida do ciclo de vida?** `src/middlewares/session_manager.py`.
   Abre, desfaz se deu errado, fecha sempre — e **nunca salva**.
-- **Quem entrega a sessão para a rota?** O `get_db`, em
-  `src/database.py`, que a rota pede escrevendo
-  `db: Session = Depends(get_db)`.
+- **Quem pede a sessão?** O controller, ao ser construído. O
+  `BaseController` chama o `get_session()` de `src/database.py`, e é só
+  isso: a rota não escreve nada sobre banco.
 
-A separação não é capricho: middleware sabe olhar a requisição e mexer
-na resposta, mas **não tem como entregar um objeto para a rota**. Quem
-faz isso no FastAPI é a *dependency*. Por isso as duas peças existem.
+**A rota não fala de banco, de propósito.** Abra `src/routers/` e repare
+no que não está lá: nenhuma menção a sessão, a `Session`, a
+`Depends`. A rota recebe a requisição, chama o controller e devolve a
+resposta. Quem precisa de banco é a regra de negócio, então é ela que
+pede.
 
-**Por que o ciclo virou middleware.** Dava para deixar tudo no `get_db`
-— e por um tempo foi assim. O motivo da troca não é técnico: "onde a
-sessão de banco nasce e morre?" é uma pergunta que se responde olhando a
-lista de middlewares, e é lá que as pessoas procuram. Um projeto de
-estudo que ensina um caminho diferente do que se encontra no trabalho
-ensina uma coisa a mais para desaprender depois.
+**Como a sessão chega lá, se ninguém a passa?** Pelo **contexto** — o
+mesmo caminho por onde o `request_id` viaja (está explicado na seção do
+log). O middleware deixa a sessão num lugar combinado no começo da
+requisição; o controller pega de lá quando nasce. Middleware não
+consegue *entregar* um objeto para quem vem depois, mas consegue
+*deixar num lugar onde ele sabe procurar*.
+
+**O combinado que isso exige.** Sessão no contexto é sessão no ar:
+qualquer código, em qualquer camada, alcança o banco chamando
+`get_session()`. Nada impede um DTO de fazer isso — nada além do
+combinado, que é curto justamente pra caber na cabeça:
+
+> **Quem chama `get_session()` é o controller, e mais ninguém.**
+
+**Por que o ciclo virou middleware.** Dava para deixar tudo numa
+*dependency* do FastAPI — e por um tempo foi assim. O motivo da troca
+não é técnico: "onde a sessão de banco nasce e morre?" é uma pergunta
+que se responde olhando a lista de middlewares, e é lá que as pessoas
+procuram. Um projeto de estudo que ensina um caminho diferente do que se
+encontra no trabalho ensina uma coisa a mais para desaprender depois.
 
 **O que isso custou, e como o custo foi pago.** Middleware atende TODA
 requisição, inclusive o `/health_check` que o Docker consulta a cada três
 segundos — e seria ruim que o health check passasse a depender do banco
 estar de pé. Por isso o middleware não abre nada: ele só deixa o lugar
-preparado, e a sessão só nasce quando alguma rota pede pelo `get_db`. A
-rota que não usa banco continua sem tocar no banco.
+preparado, e a sessão só nasce quando alguém pede. O `/` e o
+`/health_check` não constroem controller nenhum, então continuam sem
+tocar no banco.
 
 O preço dessa preguiça é que a sessão passou a ser **opcional** — pode
 não existir —, e todo `close` e todo `rollback` precisa perguntar antes
