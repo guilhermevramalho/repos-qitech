@@ -25,8 +25,8 @@ class RequestIdFilter(logging.Filter):
     chamada de logger.info do projeto. Uma hora alguém esquece, e é
     justamente na linha que você iria precisar.
 
-    Quando não há requisição em andamento — a API subindo, o consumer
-    trabalhando na fila — o campo sai como "-", e nada quebra.
+    Quando não há requisição em andamento — a API subindo, por
+    exemplo — o campo sai como "-", e nada quebra.
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -53,11 +53,9 @@ def setup_logging() -> None:
     root_logger.setLevel(level)
     root_logger.handlers = [handler]
 
-    # Estas bibliotecas falam MUITO em modo debug: o boto3 escreve a
-    # assinatura criptográfica de cada chamada à fila, e são dezenas de
-    # linhas por mensagem. Nada disso é sobre o seu código, e no meio
-    # dessa parede você não acharia a sua própria linha de log.
-    for biblioteca_falante in ["urllib3", "boto3", "botocore", "s3transfer"]:
+    # O urllib3 fala MUITO em modo debug, e nada disso e nosso: sao
+    # detalhes de conexao HTTP das bibliotecas que usamos.
+    for biblioteca_falante in ["urllib3"]:
         logging.getLogger(biblioteca_falante).setLevel(logging.CRITICAL)
 
 

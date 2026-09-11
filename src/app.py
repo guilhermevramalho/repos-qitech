@@ -10,8 +10,7 @@ from middlewares import (
     register_secure_headers_middleware,
     register_session_manager_middleware,
 )
-from routers import health_check_router, sample_entity_router
-from sqs import create_queue
+from resources import HealthCheckResource, SampleEntityResource
 from utils.logger import setup_logging
 
 
@@ -98,12 +97,58 @@ def create_app() -> FastAPI:
     register_request_context_middleware(application)
     register_secure_headers_middleware(application)
 
-    # As rotas ficam na raiz: o que o router declara como "/sample_entity"
-    # atende em http://localhost:3000/sample_entity, sem nada na frente.
-    # Router novo que você criar entra aqui embaixo, numa linha igual
-    # a estas duas.
-    application.include_router(health_check_router)
-    application.include_router(sample_entity_router)
+    # ────────────────────────────────────────────────────────────────
+    # As rotas — o endereço, o verbo, e quem atende
+    # ────────────────────────────────────────────────────────────────
+    # Cada linha liga um endereço a um método de um resource. É a lista
+    # COMPLETA do que esta API atende: rota que não está aqui não
+    # existe, e não há um segundo lugar para procurar.
+    #
+    # Nos serviços da QI o framework é o Falcon, que descobre o método
+    # pelo nome — chegou um POST, ele procura um `on_post`, e o registro
+    # é uma linha por ENDEREÇO. O FastAPI não faz essa descoberta, então
+    # aqui é uma linha por endereço E verbo. Custa mais linhas; em troca,
+    # não existe rota que atenda sem estar escrita nesta lista.
+    #
+    # Repare no que NÃO está escrito aqui: o status de cada resposta.
+    # 201, 202, 204 — todos saem de dentro do resource, que é quem sabe
+    # se a coisa foi criada, agendada ou concluída. Esta lista diz QUEM
+    # atende cada endereço, e mais nada.
+    health_check_resource = HealthCheckResource()
+    sample_entity_resource = SampleEntityResource()
+
+    application.add_api_route("/", health_check_resource.on_get_home, methods=["GET"])
+    application.add_api_route(
+        "/health_check",
+        health_check_resource.on_get_health_check,
+        methods=["GET"]
+    )
+
+    application.add_api_route(
+        "/sample_entity",
+        sample_entity_resource.on_post,
+        methods=["POST"],
+    )
+    application.add_api_route(
+        "/sample_entity/{sample_entity_key}",
+        sample_entity_resource.on_get_by_key,
+        methods=["GET"],
+    )
+    application.add_api_route(
+        "/sample_entity/{sample_entity_key}",
+        sample_entity_resource.on_put_by_key,
+        methods=["PUT"],
+    )
+    application.add_api_route(
+        "/webhook/sample_entity/{sample_entity_key}/increment_counter",
+        sample_entity_resource.on_put_increment_counter,
+        methods=["PUT"],
+    )
+    application.add_api_route(
+        "/sample_entities",
+        sample_entity_resource.on_get_list,
+        methods=["GET"],
+    )
 
     register_error_handlers(application)
 
@@ -116,12 +161,6 @@ def main() -> FastAPI:
     check_variables()
     error_verification()
     setup_logging()
-
-    # Garante que a fila existe antes da primeira requisição chegar. O
-    # consumer faz a mesma chamada quando sobe: criar fila que já existe
-    # não dá erro, e assim nenhum dos dois depende do outro ter subido
-    # primeiro — nem de você rodar comando nenhum na mão.
-    create_queue()
 
     return create_app()
 

@@ -25,20 +25,6 @@ USER user
 CMD uvicorn app:app --host 0.0.0.0 --port 3000 --no-server-header
 
 
-# Imagem do consumer: o mesmo codigo da API, outro programa rodando.
-#
-# Repare que a base e a MESMA da api ali em cima — mesmas dependencias,
-# mesmo src. O que muda e so a ultima linha: em vez de subir um servidor
-# HTTP, roda o laco que le a fila.
-FROM base AS consumer
-RUN chown -R user /app
-USER user
-
-# O -u desliga o buffer do Python. Sem ele, o log do consumer ficaria
-# preso na memoria e voce nao veria nada em "docker compose logs".
-CMD ["python", "-u", "consumer.py"]
-
-
 # Imagem que roda os testes — usada por:
 #
 #     docker compose run --rm tests

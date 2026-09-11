@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 
-from database import clear_session_context, open_session_context
+from database import clear_context, open_context
 
 
 def register_session_manager_middleware(application: FastAPI) -> None:
@@ -64,8 +64,8 @@ def register_session_manager_middleware(application: FastAPI) -> None:
     1. **Uma lista de exceções**, como a BYPASS_ENDPOINTS que o
        internal_token e o request_logger usam.
     2. **Não abrir nada até alguém pedir** — que é o que está escrito
-       aqui embaixo: o middleware só deixa o balcão preparado, e quem
-       cria a sessão, se algum controller pedir, é o `get_session`.
+       aqui embaixo: o middleware só abre o contexto vazio, e quem
+       cria a sessão, se algum controller pedir, é o próprio contexto.
 
     Ficou o segundo, por dois motivos. O primeiro é que a
     BYPASS_ENDPOINTS responde a OUTRA pergunta: ela diz "esta rota é
@@ -89,13 +89,13 @@ def register_session_manager_middleware(application: FastAPI) -> None:
     A ARMADILHA: SESSÃO QUE PODE NÃO EXISTIR
     ────────────────────────────────────────────────────────────────
     Os dois caminhos acima cobram o mesmo preço, e ele está nas duas
-    perguntas `if holder.session is not None` logo abaixo. Elas parecem
+    perguntas `if context.db_session is not None` logo abaixo. Elas parecem
     burocracia e não são: sem elas, a API quebra. Este projeto rodou o
     erro de propósito, com a lista de exceções e um `finally`
     desprotegido:
 
         finally:
-            holder.session.close()
+            context.db_session.close()
 
         GET /                    -> 500
         GET /health_check        -> 500
@@ -164,10 +164,8 @@ def register_session_manager_middleware(application: FastAPI) -> None:
     caminho por onde o `request_id` deste projeto já viajava.
 
     Por isso a linha aqui embaixo abre um contexto em vez de escrever no
-    `request.state`: o `request.state` só serve a quem tem uma
-    requisição, e o consumer não tem nenhuma. Compare este bloco com o
-    `process_message` do src/consumer.py — os dois ficaram quase
-    idênticos, e é de propósito.
+    `request.state`: o contexto é um lugar combinado, que qualquer camada
+    mais funda alcança sem que ninguém precise passar nada adiante.
 
     O resto da história está em src/database.py.
     """
@@ -175,8 +173,8 @@ def register_session_manager_middleware(application: FastAPI) -> None:
     @application.middleware("http")
     async def manage_session(request: Request, call_next):
         # A requisição começa sem sessão nenhuma, e pode terminar assim.
-        # Quem cria é o get_session, se algum controller pedir.
-        holder = open_session_context()
+        # Quem cria é o controller, ao pedir a sessão ao contexto.
+        context = open_context()
 
         try:
             response = await call_next(request)
@@ -192,19 +190,19 @@ def register_session_manager_middleware(application: FastAPI) -> None:
             # fica assim mesmo, dizendo a intenção em voz alta: o dia em
             # que alguém trocar o que vem depois, o combinado continua
             # escrito.
-            if holder.session is not None:
-                holder.session.rollback()
+            if context.db_session is not None:
+                context.db_session.rollback()
             raise
         finally:
             # Sempre. Deu certo, deu 404, explodiu: a conexão volta pro
             # pool nesta linha. E repare na pergunta antes do ponto: ela
             # é a guarda da armadilha contada na docstring.
-            if holder.session is not None:
-                holder.session.close()
+            if context.db_session is not None:
+                context.db_session.close()
 
-            # E o balcão sai do contexto. Fora de uma requisição, pedir
-            # uma sessão tem que falhar alto — não devolver a desta aqui,
-            # já fechada.
-            clear_session_context()
+            # E o contexto sai de circulação. Fora de uma requisição,
+            # pedir o contexto tem que falhar alto — não devolver o desta
+            # aqui, com a sessão já fechada.
+            clear_context()
 
         return response
