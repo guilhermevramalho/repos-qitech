@@ -1,0 +1,15 @@
+{
+  "title": "PostSampleEntity",
+  "type": "object",
+  "properties": {
+    "hello": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    }
+  },
+  "required": [
+    "hello"
+  ],
+  "additionalProperties": false
+}

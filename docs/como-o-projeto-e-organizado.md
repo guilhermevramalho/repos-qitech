@@ -149,7 +149,7 @@ combinado inteiro.
 
 | Quero... | Mexo em | Na ordem |
 |---|---|---|
-| **aceitar um campo novo** no JSON de entrada | `src/schemas/sample_entity.py` | se o campo vai para o banco, também `database/database.sql` e `src/models/` |
+| **aceitar um campo novo** no JSON de entrada | `src/schemas/post_sample_entity.json` | se o campo vai para o banco, também `database/database.sql` e `src/models/` |
 | **mudar o que a resposta devolve** | `src/dtos/sample_entity_dto.py` | é o único lugar; se o campo ainda não existe no banco, antes disso `database/database.sql` e `src/models/` |
 | **criar uma rota nova** numa entidade que já existe | `src/routers/sample_entity.py` | e o método no controller, se a regra for nova |
 | **mudar uma regra** ("não pode X") | `src/controllers/sample_entity_controller.py` | e um erro novo em `src/errors/custom_errors.py`, se precisar |
@@ -278,9 +278,20 @@ Duas pastas falam de formato, e é fácil confundi-las. A divisão é a
 direção: **o `schemas/` cuida do que ENTRA, o `dtos/` cuida do que
 SAI.**
 
-- `src/schemas/sample_entity.py` descreve o JSON que o cliente manda.
-  Quem lê isso é o Pydantic, antes da primeira linha da rota rodar:
-  campo faltando, tipo errado ou campo a mais viram 400 ali mesmo.
+- `src/schemas/post_sample_entity.json` descreve o JSON que o cliente
+  manda. Quem lê isso é o `jsonschema`, antes da primeira linha da rota
+  rodar: campo faltando, tipo errado ou campo a mais viram 400 ali
+  mesmo. Quem aciona a conferência é o decorator
+  `@SchemaHandler.validate("post_sample_entity.json")` na rota, e o
+  código dele está em `src/utils/schema_handler.py`.
+
+  **Por que um `.json` e não uma classe Python?** O FastAPI validaria
+  sozinho, com uma classe herdando de `BaseModel` — e por um tempo foi
+  assim aqui. A troca não é técnica: nos serviços da QI Tech o contrato
+  de entrada é um arquivo escrito em **JSON Schema**, um padrão que
+  existe fora do Python e que quem integra com a API consegue ler sem
+  abrir o repositório. O preço é que o corpo chega como dicionário:
+  `payload["hello"]` em vez de `payload.hello`.
 - `src/dtos/sample_entity_dto.py` faz o caminho de volta. O repository
   entrega o objeto do banco; o DTO devolve um dicionário simples, e é
   esse dicionário que vira o JSON da resposta.

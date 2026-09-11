@@ -3,6 +3,11 @@ import os
 
 SERVICE_ROOT = os.path.abspath(os.path.dirname(__file__))
 
+# Onde moram os arquivos de schema — os .json que descrevem o formato
+# que cada requisicao precisa ter. Quem le essa pasta e o
+# src/utils/schema_handler.py.
+SCHEMA_PATH = os.path.join(SERVICE_ROOT, "schemas")
+
 APP_ENV = os.environ.get("APP_ENV", "local")
 SERVICE_NAME = os.environ.get("SERVICE_NAME", "bootcamp-api")
 
