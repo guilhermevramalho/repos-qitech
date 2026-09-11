@@ -91,9 +91,7 @@ class SampleEntityRepository:
 
         status_enumerators = filters.get("status_enumerators")
         if status_enumerators:
-            query = query.join(
-                SampleEntityStatus, SampleEntity.status_id == SampleEntityStatus.id
-            ).filter(SampleEntityStatus.enumerator.in_(status_enumerators))
+            query = query.join(SampleEntity.status).filter(SampleEntityStatus.enumerator.in_(status_enumerators))
 
         name = filters.get("name")
         if name is not None:
