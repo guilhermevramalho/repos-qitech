@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 
 from constants import check_variables
 from errors import register_error_handlers
@@ -10,7 +10,7 @@ from middlewares import (
     register_secure_headers_middleware,
     register_session_manager_middleware,
 )
-from routers import health_check_router, sample_entity_router
+from resources import HealthCheckResource, SampleEntityResource
 from sqs import create_queue
 from utils.logger import setup_logging
 
@@ -98,12 +98,65 @@ def create_app() -> FastAPI:
     register_request_context_middleware(application)
     register_secure_headers_middleware(application)
 
-    # As rotas ficam na raiz: o que o router declara como "/sample_entity"
-    # atende em http://localhost:3000/sample_entity, sem nada na frente.
-    # Router novo que você criar entra aqui embaixo, numa linha igual
-    # a estas duas.
-    application.include_router(health_check_router)
-    application.include_router(sample_entity_router)
+    # ────────────────────────────────────────────────────────────────
+    # As rotas — o endereço, o verbo, e quem atende
+    # ────────────────────────────────────────────────────────────────
+    # Cada linha liga um endereço a um método de um resource. É a lista
+    # COMPLETA do que esta API atende: rota que não está aqui não
+    # existe, e não há um segundo lugar para procurar.
+    #
+    # Nos serviços da QI o framework é o Falcon, que descobre o método
+    # pelo nome — chegou um POST, ele procura um `on_post`, e o registro
+    # é uma linha por ENDEREÇO. O FastAPI não faz essa descoberta, então
+    # aqui é uma linha por endereço E verbo. Custa mais linhas; em troca,
+    # não existe rota que atenda sem estar escrita nesta lista.
+    health_check_resource = HealthCheckResource()
+    sample_entity_resource = SampleEntityResource()
+
+    application.add_api_route("/", health_check_resource.on_get_home, methods=["GET"])
+    application.add_api_route(
+        "/health_check",
+        health_check_resource.on_get_health_check,
+        methods=["GET"],
+        status_code=status.HTTP_204_NO_CONTENT,
+    )
+
+    application.add_api_route(
+        "/sample_entity",
+        sample_entity_resource.on_post,
+        methods=["POST"],
+        status_code=status.HTTP_201_CREATED,
+    )
+    application.add_api_route(
+        "/sample_entity/{sample_entity_key}",
+        sample_entity_resource.on_get_by_key,
+        methods=["GET"],
+        status_code=status.HTTP_200_OK,
+    )
+    application.add_api_route(
+        "/sample_entity/{sample_entity_key}",
+        sample_entity_resource.on_put_by_key,
+        methods=["PUT"],
+        status_code=status.HTTP_202_ACCEPTED,
+    )
+    application.add_api_route(
+        "/sample_entity/{sample_entity_key}/process",
+        sample_entity_resource.on_post_process,
+        methods=["POST"],
+        status_code=status.HTTP_202_ACCEPTED,
+    )
+    application.add_api_route(
+        "/webhook/sample_entity/{sample_entity_key}/increment_counter",
+        sample_entity_resource.on_put_increment_counter,
+        methods=["PUT"],
+        status_code=status.HTTP_204_NO_CONTENT,
+    )
+    application.add_api_route(
+        "/sample_entities",
+        sample_entity_resource.on_get_list,
+        methods=["GET"],
+        status_code=status.HTTP_200_OK,
+    )
 
     register_error_handlers(application)
 

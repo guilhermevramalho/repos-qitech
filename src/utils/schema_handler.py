@@ -77,18 +77,22 @@ class SchemaHandler:
 
     @staticmethod
     def validate(schema_file_name: str):
-        """Decorator que valida o `payload` da rota antes de ela rodar.
+        """Decorator que valida o `payload` antes de o resource rodar.
 
-        Usa-se assim, SEMPRE abaixo do decorator de rota:
+        Usa-se assim, no método do resource que recebe corpo:
 
-            @router.post("/sample_entity")
-            @SchemaHandler.validate("post_sample_entity.json")
-            def create_sample_entity(payload: dict) -> dict:
+            class SampleEntityResource:
+                @SchemaHandler.validate("post_sample_entity.json")
+                def on_post(self, payload: dict) -> dict:
 
-        A ordem importa. O `@router.post` precisa ser o de cima porque
-        ele registra a função JÁ embrulhada por este aqui — se ficasse
-        embaixo, o FastAPI registraria a função crua e a validação nunca
-        rodaria.
+        O nome do arquivo é o único argumento, e ele aponta pra dentro
+        de src/schemas/. Método que não recebe corpo — um GET, um
+        DELETE — não leva decorator nenhum: não há o que conferir.
+
+        Repare que o endereço HTTP não aparece aqui. Quem liga
+        "/sample_entity" a este método é o src/app.py, e é de propósito:
+        o resource cuida do CONTEÚDO da requisição, o app.py cuida do
+        ENDEREÇO dela.
         """
 
         def decorator_validate(func):

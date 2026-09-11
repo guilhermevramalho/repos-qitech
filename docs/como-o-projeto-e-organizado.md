@@ -27,7 +27,8 @@ Este é o `POST /sample_entity`, que cria uma entidade:
         ↓              comentada em src/app.py, onde ela aparece de trás
         ↓              pra frente — o comentário de lá explica por quê
         ↓
-  src/routers/         que endereço é esse? quem cuida dele?
+  src/resources/       que endereço é esse? quem cuida dele?
+        ↓              (o endereço → resource está escrito em src/app.py)
         ↓              (antes da 1ª linha da rota rodar, src/schemas/
         ↓               confere o JSON. Torto, para aqui: 400)
         ↓
@@ -58,7 +59,7 @@ este texto.
 
 | Pasta | Pode | Não pode |
 |---|---|---|
-| `routers/` | receber a requisição, chamar **um** controller, devolver a resposta | saber SQL, decidir regra de negócio |
+| `resources/` | receber a requisição, conferir o schema, chamar **um** controller, devolver a resposta | saber SQL, decidir regra de negócio |
 | `schemas/` | dizer qual JSON é aceito na entrada, e recusar o que não é | falar com banco, decidir regra |
 | `controllers/` | decidir o que pode e o que não pode, chamar repositories, salvar (`commit`) | escrever consulta, saber que existe HTTP |
 | `repositories/` | buscar, criar e atualizar no banco | decidir se aquilo era permitido |
@@ -92,7 +93,7 @@ explode no meio. Duas perguntas diferentes, então:
   `BaseController` chama o `get_session()` de `src/database.py`, e é só
   isso: a rota não escreve nada sobre banco.
 
-**A rota não fala de banco, de propósito.** Abra `src/routers/` e repare
+**O resource não fala de banco, de propósito.** Abra `src/resources/` e repare
 no que não está lá: nenhuma menção a sessão, a `Session`, a
 `Depends`. A rota recebe a requisição, chama o controller e devolve a
 resposta. Quem precisa de banco é a regra de negócio, então é ela que
@@ -151,13 +152,13 @@ combinado inteiro.
 |---|---|---|
 | **aceitar um campo novo** no JSON de entrada | `src/schemas/post_sample_entity.json` | se o campo vai para o banco, também `database/database.sql` e `src/models/` |
 | **mudar o que a resposta devolve** | `src/dtos/sample_entity_dto.py` | é o único lugar; se o campo ainda não existe no banco, antes disso `database/database.sql` e `src/models/` |
-| **criar uma rota nova** numa entidade que já existe | `src/routers/sample_entity.py` | e o método no controller, se a regra for nova |
+| **criar uma rota nova** numa entidade que já existe | `src/resources/sample_entity.py` | registrar o endereço em `src/app.py`, e o método no controller se a regra for nova |
 | **mudar uma regra** ("não pode X") | `src/controllers/sample_entity_controller.py` | e um erro novo em `src/errors/custom_errors.py`, se precisar |
 | **consultar o banco de outro jeito** (filtrar, ordenar, contar) | `src/repositories/sample_entity_repository.py` | o controller chama o método novo |
 | **criar uma tabela** | `database/database.sql` | depois `src/models/` e o `__init__.py` da pasta |
-| **criar uma entidade inteira** (rota + regra + tabela) | um arquivo em cada pasta | `database.sql` → `models/` → `repositories/` → `controllers/` → `schemas/` → `routers/` → registrar em `src/app.py` |
+| **criar uma entidade inteira** (rota + regra + tabela) | um arquivo em cada pasta | `database.sql` → `models/` → `repositories/` → `controllers/` → `schemas/` → `resources/` → registrar em `src/app.py` |
 | **fazer algo em toda requisição** | `src/middlewares/` | registrar em `src/app.py` |
-| **chamar outro serviço** | `src/connectors/` | quem chama o connector é o controller, nunca o router |
+| **chamar outro serviço** | `src/connectors/` | quem chama o connector é o controller, nunca o resource |
 
 Quatro armadilhas que pegam quase todo mundo. A segunda e a terceira
 custam caro pelo mesmo motivo: a mensagem de erro aponta para o
@@ -247,10 +248,10 @@ docker compose --profile test build --no-cache tests
 A seta anda num sentido só:
 
 ```
-routers → controllers → repositories → models
+resources → controllers → repositories → models
 ```
 
-Um router pode chamar um controller. Um controller pode chamar um
+Um resource pode chamar um controller. Um controller pode chamar um
 repository. **O contrário nunca acontece** — repository não chama
 controller, model não sabe que existe rota.
 
@@ -267,7 +268,7 @@ Por que isso importa, em três respostas concretas:
   um do outro.
 
 Quando você estiver com pressa, vai dar vontade de escrever a consulta
-direto no router. Funciona. E é exatamente assim que um projeto vira
+direto no resource. Funciona. E é exatamente assim que um projeto vira
 aquele em que ninguém mais encontra nada.
 
 ---

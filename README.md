@@ -521,7 +521,8 @@ src/
   sqs.py           ← a conexão com a fila
   constants.py     ← as configurações, lidas do ambiente
 
-  routers/         ← recebe a requisição HTTP e devolve a resposta
+  resources/       ← recebe a requisição HTTP e devolve a resposta
+                     (quem liga cada endereço a um resource é o app.py)
   schemas/         ← o formato do JSON que entra
   controllers/     ← as regras de negócio: o que pode e o que não pode
   repositories/    ← as conversas com o banco
@@ -542,13 +543,13 @@ tests/             ← os testes
 Porque cada uma tem **um trabalho só**, e só conversa com a vizinha:
 
 ```
-requisição → router → controller → repository → banco
-                ↑          ↑
-            valida o    decide o
-             formato    que pode
+requisição → resource → controller → repository → banco
+                 ↑           ↑
+             valida o     decide o
+              formato     que pode
 ```
 
-O router não sabe SQL. O repository não sabe o que é uma regra de
+O resource não sabe SQL. O repository não sabe o que é uma regra de
 negócio. Quando você precisa trocar o banco, mexe numa pasta. Quando a
 regra muda, mexe na outra. É isso que permite um time inteiro trabalhar
 no mesmo projeto sem pisar no pé um do outro.
@@ -559,7 +560,7 @@ O `consumer.py` entra por outra porta e chega no mesmo lugar:
 mensagem na fila → consumer → controller → repository → banco
 ```
 
-Ele não tem router nem schema — não existe requisição HTTP para validar.
+Ele não tem resource nem schema — não existe requisição HTTP para validar.
 Do controller em diante, é o **mesmo caminho**: a regra de negócio é uma
 só, não importa se o pedido chegou por uma requisição ou por uma
 mensagem. Regra duplicada é regra que vai divergir.
