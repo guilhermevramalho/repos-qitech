@@ -3,23 +3,30 @@
 Projeto base do Bootcamp: uma API REST em **Python + FastAPI**, com banco
 **PostgreSQL**, rodando em **Docker**.
 
-Você não precisa saber programar para começar. E não precisa instalar
-Python, banco de dados nem nada disso na sua máquina: **o Docker faz
-tudo** — inclusive rodar os testes.
+Você não precisa saber programar para começar. A API e o banco sobem
+no **Docker**, então você não instala nem um nem outro na sua máquina.
+Os **testes** rodam no seu Python — são dois comandos, e a seção 2
+mostra os dois.
 
 ---
 
 ## 0. O que você precisa ter instalado
 
-São duas coisas. Só duas.
+São três coisas.
 
 | O quê | Para quê | Como conferir |
 |---|---|---|
-| **Docker** (com o Docker Desktop no Mac/Windows) | roda a API, o banco e os testes | `docker compose version` |
+| **Docker** (com o Docker Desktop no Mac/Windows) | roda a API e o banco | `docker compose version` |
 | **Git** | trazer o projeto para o seu computador | `git --version` |
+| **Python 3.11 ou mais novo** | rodar os testes (seção 2) | `python3 --version` |
 
-Abra o terminal e rode os dois comandos da coluna da direita. Se ambos
+Abra o terminal e rode os três comandos da coluna da direita. Se todos
 responderem um número de versão, você está pronto.
+
+> **Por que o Python, se tudo roda no Docker?** Porque os testes rodam
+> FORA dele, na sua máquina, contra a API que está de pé no container.
+> O ganho é o ciclo: você salva um teste e roda na hora, sem esperar
+> imagem nenhuma ser montada. O preço está explicado na seção 2.
 
 > **`docker compose version` deu erro?** Sua instalação do Docker é
 > antiga demais (ou o Docker não está ligado). No Mac e no Windows,
@@ -27,8 +34,11 @@ responderem um número de versão, você está pronto.
 > comando continuar falhando, reinstale pelo site oficial —
 > o `docker compose` (com **espaço**) vem junto desde 2022.
 
-Nada mais é necessário. Se em algum momento este projeto pedir que você
-instale outra coisa, é um bug do projeto — avise a gente.
+Nada além destes três. Se em algum momento este projeto pedir que você
+instale outro PROGRAMA, é um bug do projeto — avise a gente. (As
+bibliotecas Python que os testes usam são outra conversa: elas entram
+com um `pip install` na seção 2, dentro de uma pasta do próprio
+projeto, e somem quando você apaga essa pasta.)
 
 ---
 
@@ -87,7 +97,13 @@ cole um comando de cada vez.
 curl -X POST http://localhost:3000/sample_entity \
   -H "INTERNAL-TOKEN: default_token" \
   -H "Content-Type: application/json" \
-  -d '{"hello": "world"}'
+  -d '{
+    "hello": "world",
+    "name": "Maria da Silva",
+    "email": "maria.silva@exemplo.com.br",
+    "document_number": "529.982.247-25",
+    "birthdate": "1990-05-17"
+  }'
 ```
 
 ```json
@@ -98,6 +114,16 @@ Esse `sample_entity_key` é o endereço da entidade que você acabou de
 criar. **Copie o seu** — ele nasce diferente a cada vez, e nos comandos
 abaixo você troca o que está escrito aqui pelo seu.
 
+> **Rodou o comando duas vezes e levou 409 na segunda?** É de propósito:
+> o CPF e o e-mail não podem se repetir. Para criar uma segunda
+> entidade, troque o e-mail (qualquer um serve) e o CPF — mas o CPF tem
+> que ser **válido de verdade**, com os dois dígitos finais batendo com
+> a conta. O `529.982.247-25` acima é um CPF de teste conhecido, que
+> passa na conta e não pertence a ninguém.
+>
+> **E os cinco campos são todos obrigatórios?** São. Mande `{}` e a API
+> diz qual está faltando — é o comando 6 lá embaixo.
+
 #### 2. Buscar a entidade
 
 ```bash
@@ -106,11 +132,19 @@ curl http://localhost:3000/sample_entity/3fbf83e9-e5fc-4e0f-8427-db6a1a50f964 \
 ```
 
 ```json
-{"hello":"world","status":"pending","sample_entity_key":"3fbf83e9-e5fc-4e0f-8427-db6a1a50f964","counter":0}
+{"hello":"world","sample_entity_key":"3fbf83e9-e5fc-4e0f-8427-db6a1a50f964","name":"Maria da Silva","email":"maria.silva@exemplo.com.br","document_number":"529.982.247-25","birthdate":"1990-05-17","status":"pending","counter":0,"status_events":[{"status":"pending","event_datetime":"2026-09-11T20:36:43.104210"}]}
 ```
 
-Você mandou um campo e voltaram quatro. Os outros três a API inventou
-sozinha: o endereço, o status inicial e um contador zerado.
+Você mandou cinco campos e voltaram nove. Os quatro extras a API montou
+sozinha:
+
+- **`sample_entity_key`** — o endereço da entidade;
+- **`status`** — o estado inicial, `pending`;
+- **`counter`** — um contador zerado;
+- **`status_events`** — a **história**. Cada vez que o status muda, uma
+  linha nova entra aqui, com a hora. Saber onde a entidade está é uma
+  coisa; saber por onde ela passou é outra, e é essa lista que responde
+  a segunda.
 
 #### 3. Listar as entidades
 
@@ -120,12 +154,41 @@ curl http://localhost:3000/sample_entities \
 ```
 
 ```json
-{"data":[{"hello":"world","status":"pending","sample_entity_key":"3fbf83e9-e5fc-4e0f-8427-db6a1a50f964","counter":0}],"limit":10,"page":0,"is_last_page":true}
+{"data":[{"hello":"world","sample_entity_key":"3fbf83e9-e5fc-4e0f-8427-db6a1a50f964","name":"Maria da Silva","email":"maria.silva@exemplo.com.br","document_number":"529.982.247-25","birthdate":"1990-05-17","status":"pending","counter":0}],"limit":10,"page":0,"is_last_page":true}
 ```
 
-Vêm de dez em dez. Para pedir outra quantidade ou outra página,
-acrescente `?limit=2&page=0` ao endereço. O `is_last_page` já responde a
-pergunta seguinte — "tem mais?" — sem custar uma segunda requisição.
+Vêm de dez em dez, da mais nova para a mais antiga. Para pedir outra
+quantidade ou outra página, acrescente `?limit=2&page=0` ao endereço —
+o `limit` vai até **100**. O `is_last_page` já responde a pergunta
+seguinte — "tem mais?" — sem custar uma segunda requisição.
+
+Repare no que **não** veio: o `status_events`. Na lista cada item vem
+resumido, porque montar a história de cada entidade custa uma consulta a
+mais por item — numa página de 100, são 100 consultas para uma
+informação que quem está varrendo não pediu. A história aparece quando
+você abre UMA entidade, no comando 2.
+
+Também dá para **filtrar**. Todos os filtros se combinam, e todos são
+opcionais:
+
+```bash
+curl "http://localhost:3000/sample_entities?name=maria&status=pending&status=failed" \
+  -H "INTERNAL-TOKEN: default_token"
+```
+
+| Filtro | Como casa |
+|---|---|
+| `name` | por **pedaço**, ignorando maiúscula/minúscula |
+| `email` | exato |
+| `document_number` | exato |
+| `birthdate_from` / `birthdate_to` | intervalo, **incluindo** as duas pontas |
+| `status` | pode repetir: `?status=pending&status=failed` traz os dois |
+
+Repare que `status` se comporta ao contrário dos outros: `name` junto
+com `email` **estreita** a busca (os dois precisam bater), mas dois
+`status` **alargam** (basta um bater). Faz sentido pelo que a pessoa
+quer dizer — "me mostra o que deu errado e o que deu certo" é um pedido
+legítimo, e uma entidade só pode estar num dos baldes.
 
 #### 4. Somar 1 no contador
 
@@ -176,12 +239,43 @@ curl -X POST http://localhost:3000/sample_entity \
 ```
 
 ```json
-{"title":"Bad Request","description":"Field required in hello","translation":"Payload Inválido","code":"QIT000001"}
+{"title":"Bad Request","description":"'hello' is a required property","translation":"Payload Inválido","code":"QIT000001"}
 ```
 
 **400**, e nada foi criado. O `hello` é obrigatório, e quem recusou não
 foi a regra de negócio: foi o `src/schemas/`, antes da primeira linha da
 rota rodar. Pedido torto não chega a custar uma consulta ao banco.
+
+Repare que ele reclamou de **um** campo, e você deixou cinco de fora. É
+assim mesmo: a validação para no primeiro problema. Tire o `{}` e vá
+preenchendo um campo de cada vez para ver a reclamação andar.
+
+E existe uma fronteira aqui que vale a pena enxergar cedo. Mande um CPF
+com o formato certo e os dígitos errados:
+
+```bash
+curl -X POST http://localhost:3000/sample_entity \
+  -H "INTERNAL-TOKEN: default_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hello": "world",
+    "name": "Maria da Silva",
+    "email": "outra@exemplo.com.br",
+    "document_number": "111.111.111-11",
+    "birthdate": "1990-05-17"
+  }'
+```
+
+```json
+{"title":"Invalid Document Number","description":"The document number 111.111.111-11 is not a valid CPF.","translation":"O CPF informado não é válido.","code":"QIT001003"}
+```
+
+Agora é **422**, não 400. A diferença não é capricho: 400 quer dizer
+"não consegui ler o seu pedido"; 422 quer dizer "li, entendi, e esse
+valor não pode existir". O schema sabe contar pontos e traços — ele não
+sabe fazer a conta dos dois últimos dígitos. Quem sabe é o
+`src/utils/document_number.py`, e por isso essa recusa vem de dentro,
+com código próprio.
 
 #### Esqueceu o `-H "INTERNAL-TOKEN: ..."`?
 
@@ -257,13 +351,30 @@ Sete endereços — este é o mapa inteiro da API:
 | `GET /health_check` | diz se a API está de pé | `204`, sem corpo |
 | `POST /sample_entity` | cria uma entidade | `201` + o `sample_entity_key` |
 | `GET /sample_entity/{key}` | busca uma entidade | `200` + a entidade |
-| `GET /sample_entities` | lista, de dez em dez (`?limit=&page=&status=`) | `200` + a página |
+| `GET /sample_entities` | lista, de dez em dez, com filtros | `200` + a página |
 | `PUT /sample_entity/{key}` | muda o status (`success` ou `failed`) | `202` + o `sample_entity_key` |
 | `PUT /webhook/sample_entity/{key}/increment_counter` | soma 1 no contador | `204`, sem corpo |
 
 As cinco de baixo exigem o `INTERNAL-TOKEN` (seção 6). As duas de cima
 são abertas — a primeira você já usou: foi ela que respondeu no
 navegador.
+
+Os parâmetros da listagem, todos opcionais e combináveis:
+`?limit=` (padrão 10, teto 100) · `?page=` (padrão 0) · `?status=`
+(repetível) · `?name=` · `?email=` · `?document_number=` ·
+`?birthdate_from=` · `?birthdate_to=`. Qualquer outro nome a API
+**recusa** com 400 — é o `src/schemas/get_sample_entities.json` que
+decide, e ele não aceita o que não conhece. Vale a pena errar de
+propósito uma vez:
+
+```bash
+curl "http://localhost:3000/sample_entities?stauts=pending" \
+  -H "INTERNAL-TOKEN: default_token"
+```
+
+Sem essa recusa, um `stauts` com a letra trocada viraria uma lista
+inteira devolvida como se o filtro tivesse funcionado — o pior tipo de
+bug, o que não reclama.
 
 Para desligar tudo: `Ctrl+C` no terminal da API e depois
 
@@ -305,9 +416,9 @@ teste bate numa porta que ainda não responde.
 O resultado sai assim:
 
 ```
-tests/integration/sample_entity/test_sample_entity_create.py::TestSampleEntityCreate::test_creates_entity_in_pending PASSED
+tests/integration/test_healthcheck.py::TestHealthCheck::test_home PASSED
 ...
-============================== 37 passed in 1.56s ==============================
+============================== 35 passed in 1.54s ==============================
 ```
 
 Para rodar só um arquivo (ou só um teste), acrescente o caminho:
@@ -321,8 +432,13 @@ isso). Trocou a porta da API ali, os testes passam a bater na porta nova
 — você não configura a mesma coisa em dois lugares.
 
 Os testes conversam com a API **por HTTP**, exatamente como um cliente de
-verdade faria. Eles não espiam o código por dentro — não sabem que existe
-FastAPI, nem SQLAlchemy. Só sabem: "mandei isso, tem que voltar aquilo".
+verdade faria. Eles não espiam o código por dentro: nenhum deles importa
+nada de `src/`. Só sabem: "mandei isso, tem que voltar aquilo".
+
+> Uma exceção, e ela é honesta: `tests/utils/db_utils.py` fala com o
+> banco direto, por SQLAlchemy. Mas não para **montar** cenário — só
+> para **zerar** o banco entre testes que não podem se atrapalhar. O
+> cenário continua nascendo pela API, com `POST`.
 
 Isso tem uma consequência bonita: **este projeto inteiro já foi reescrito
 de um framework para outro, e nenhum teste precisou mudar.** Quando o
@@ -354,6 +470,19 @@ números:
 API_PORT=3001
 DB_PORT=5433
 ```
+
+Mexeu no `DB_PORT`? Então mude **também** a porta da `DATABASE_URL`, no
+mesmo arquivo:
+
+```
+DATABASE_URL=postgresql+psycopg2://bootcamp:bootcamp@localhost:5433/bootcamp
+```
+
+São dois lugares porque são dois pontos de vista. O `DB_PORT` diz em
+que porta **da sua máquina** o banco aparece; a `DATABASE_URL` é o
+endereço que os testes usam para chegar nele de fora do Docker. A API
+lá dentro não usa nenhuma das duas — para ela o banco é `db:5432`, e
+por isso essa linha está fixa no `docker-compose.yml`.
 
 Suba de novo. Agora a API atende em http://localhost:3001 — e nos
 comandos `curl` da seção 1 você troca `3000` por `3001`.
@@ -427,7 +556,8 @@ src/
 
   resources/       ← recebe a requisição HTTP e devolve a resposta
                      (quem liga cada endereço a um resource é o app.py)
-  schemas/         ← o formato do JSON que entra
+  schemas/         ← o formato do que entra: o JSON do corpo e os
+                     parâmetros do endereço
   controllers/     ← as regras de negócio: o que pode e o que não pode
   repositories/    ← as conversas com o banco
   models/          ← as tabelas, descritas em Python
@@ -435,6 +565,7 @@ src/
   errors/          ← os erros da API, cada um com seu código
   middlewares/     ← o que acontece com TODA requisição
   connectors/      ← as conversas com outros serviços
+  utils/           ← as ferramentas que não são de nenhuma camada
 
 database/
   database.sql     ← as tabelas, em SQL puro
@@ -454,7 +585,15 @@ requisição → resource → controller → repository → banco
 ```
 
 O resource não sabe SQL. O repository não sabe o que é uma regra de
-negócio. Quando você precisa trocar o banco, mexe numa pasta. Quando a
+negócio. Um teste rápido para saber se uma linha está na pasta certa:
+**nenhum `raise` mora em `resources/`** — quem recusa é o schema, antes,
+ou o controller, depois. Confira você mesmo:
+
+```bash
+grep -rn "raise" src/resources/
+```
+
+Não volta nada, e isso é de propósito. Quando você precisa trocar o banco, mexe numa pasta. Quando a
 regra muda, mexe na outra. É isso que permite um time inteiro trabalhar
 no mesmo projeto sem pisar no pé um do outro.
 
@@ -506,7 +645,7 @@ Todo erro da API responde no mesmo formato, com um código próprio:
 ```json
 {
   "title": "Bad Request",
-  "description": "Field required in hello",
+  "description": "'hello' is a required property",
   "translation": "Payload Inválido",
   "code": "QIT000001"
 }
@@ -516,12 +655,17 @@ Todo erro da API responde no mesmo formato, com um código próprio:
 |-------------|--------------------------------------------------|
 | `QIT000001` | o JSON enviado está fora do formato              |
 | `QIT000002` | faltou o `INTERNAL-TOKEN`, ou ele está errado    |
-| `QIT000010` | um parâmetro do endereço está inválido           |
+| `QIT000010` | os parâmetros do endereço se contradizem         |
 | `QIT000404` | essa rota não existe                             |
 | `QIT000405` | a rota existe, mas não aceita esse método        |
 | `QIT000500` | erro inesperado (o time é avisado)               |
 | `QIT001001` | a entidade procurada não existe                  |
 | `QIT001002` | a entidade já está num status final              |
+| `QIT001003` | o CPF tem o formato certo, mas não é um CPF      |
+| `QIT001004` | já existe um cadastro com esse CPF               |
+| `QIT001005` | já existe um cadastro com esse e-mail            |
+| `QIT001006` | a pessoa é menor de idade                        |
+| `QIT001007` | a data de nascimento não existe no calendário    |
 
 Um código estável vale mais que uma mensagem bonita: quem integra com a
 API programa em cima do código, não do texto.
@@ -533,7 +677,7 @@ Os números não são sorteados. Eles vêm em duas faixas:
   precisa mexer neles.
 - **`QIT001…`** — os erros das **regras deste projeto**. Estão em
   `src/errors/custom_errors.py`, e é aí que os seus entram: o próximo
-  livre é o `QIT001003`.
+  livre é o `QIT001008`.
 
 Não repita um número. Se repetir, a API **não sobe** — tem uma checagem
 no start (`error_verification`, em `src/errors/base_error.py`) que

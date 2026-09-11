@@ -76,9 +76,22 @@ def create_app() -> FastAPI:
     #   chega a ter uma sessão. É o mais interno de propósito — banco é
     #   o recurso mais caro desta lista, e o último que se empresta.
     #
-    # Isso não é teoria: os testes em tests/integration/ guardam esta
-    # ordem. Inverta duas linhas e algum deles fica vermelho dizendo
-    # qual combinado você quebrou.
+    # Nada disso é teoria, e dá pra ver com os olhos. Troque as duas
+    # últimas linhas de lugar (o identificador passa a ser registrado
+    # antes do log, ou seja, a executar DEPOIS dele), chame qualquer
+    # rota e olhe o log:
+    #
+    #     docker compose logs api | tail -2
+    #
+    # As duas linhas saem com [-] no lugar do identificador: o log
+    # aconteceu antes de existir um nome para aquela requisição. Desfaça
+    # a troca e o nome volta.
+    #
+    # Repare no que essa experiência tem de incômodo: a suíte continua
+    # TODA VERDE com a ordem trocada. Nenhum teste aqui guarda esta
+    # ordem — o preço aparece no dia do incidente, quando o log não
+    # servir pra achar a requisição. Teste que não existe não avisa
+    # nada, e é por isso que este comentário existe.
     #
     # ATENÇÃO, e é aqui que quase todo mundo tropeça: as quatro linhas
     # abaixo são o DIAGRAMA ACIMA DE TRÁS PRA FRENTE. O FastAPI embrulha
