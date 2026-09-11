@@ -20,12 +20,12 @@ Este é o `POST /sample_entity`, que cria uma entidade:
 ```
   requisição chega
         ↓
-  src/middlewares/     cinco camadas, de fora para dentro: cabeçalhos
-        ↓              de segurança → identificador único da requisição
-        ↓              → log de entrada → INTERNAL-TOKEN (sem ele, para
-        ↓              aqui: 403) → sessão de banco. A ordem está
-        ↓              comentada em src/app.py, onde ela aparece de trás
-        ↓              pra frente — o comentário de lá explica por quê
+  src/middlewares/     quatro camadas, de fora para dentro:
+        ↓              identificador único da requisição → log de
+        ↓              entrada → INTERNAL-TOKEN (sem ele, para aqui:
+        ↓              403) → sessão de banco. A ordem está comentada
+        ↓              em src/app.py, onde ela aparece de trás pra
+        ↓              frente — o comentário de lá explica por quê
         ↓
   src/resources/       que endereço é esse? quem cuida dele?
         ↓              (o endereço → resource está escrito em src/app.py)
@@ -235,8 +235,12 @@ docker compose build --no-cache api
 docker compose up -d
 ```
 
-O `--no-cache` é o que importa: sem ele o Docker reaproveita a camada do
-`pip install`, que é justamente a que você precisa ver rodar de novo.
+Aqui o `--no-cache` é cinto e suspensório: o `docker compose build api`
+sozinho já bastaria. O `Dockerfile` copia o `requirements.txt` ANTES de
+rodar o `pip install` (linhas 11-14) justamente para isso — mudou o
+arquivo, a camada do `pip` deixa de valer e ele reinstala. O
+`--no-cache` refaz a imagem INTEIRA, inclusive o que não mudou; use
+quando desconfiar da imagem, não toda vez.
 
 Mexeu no `requirements-dev.txt`, reinstale no seu ambiente:
 

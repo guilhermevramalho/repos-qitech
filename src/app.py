@@ -81,7 +81,10 @@ def create_app() -> FastAPI:
     # antes do log, ou seja, a executar DEPOIS dele), chame qualquer
     # rota e olhe o log:
     #
-    #     docker compose logs api | tail -2
+    #     docker compose logs api | grep request_logger | tail -2
+    #
+    # (O grep é necessário: sem ele o tail pega a linha de acesso do
+    # uvicorn, que é outra coisa e não passa por este middleware.)
     #
     # As duas linhas saem com [-] no lugar do identificador: o log
     # aconteceu antes de existir um nome para aquela requisição. Desfaça
