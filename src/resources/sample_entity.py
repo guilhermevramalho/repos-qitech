@@ -125,7 +125,7 @@ class SampleEntityResource:
         self,
         limit: int = Query(default=10, ge=0, le=100),
         page: int = Query(default=0, ge=0),
-        status_filter: str = Query(default=None, alias="status"),
+        status_filter: list[str] = Query(default=None, alias="status"),
         name: str = Query(default=None, min_length=1, max_length=255),
         email: str = Query(default=None, min_length=1, max_length=255),
         document_number: str = Query(default=None, min_length=1, max_length=14),
@@ -138,7 +138,7 @@ class SampleEntityResource:
         # argumentos soltos: cada filtro novo passa a custar uma linha
         # aqui, e nenhuma assinatura nova nas camadas de baixo.
         filters = {
-            "status_enumerator": status_filter,
+            "status_enumerators": status_filter,
             "name": name,
             "email": email,
             "document_number": document_number,

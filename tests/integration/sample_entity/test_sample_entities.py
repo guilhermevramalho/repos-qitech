@@ -227,3 +227,63 @@ class TestSampleEntities:
         )
         assert status == 400
         assert response["code"] == "QIT000010"
+
+    def test_filters_by_more_than_one_status(self):
+        """O filtro de status aceita VARIOS valores, somados com OU.
+
+        Repare que este filtro se comporta ao contrario dos outros: name
+        junto com email ESTREITA a busca (os dois precisam bater), mas
+        dois status ALARGAM (basta um bater). Faz sentido pensando no que
+        a pessoa quer dizer: "me mostra o que deu errado E o que deu
+        certo" nao e um pedido impossivel — sao dois baldes do mesmo
+        campo, e uma entidade so esta num deles.
+        """
+        batch_name = f"Kovalevskaya{uuid4().hex[:8]}"
+
+        created_keys = []
+        for _entidade in range(3):
+            payload = PayloadGenerator.create_sample_entity_payload(name=batch_name)
+            status, response = RequestGenerator.POST_sample_entity(payload)
+            assert status == 201
+            created_keys.append(response["sample_entity_key"])
+
+        status, response = RequestGenerator.PUT_sample_entity(
+            created_keys[0], PayloadGenerator.create_new_status_payload("success")
+        )
+        assert status == 202
+
+        status, response = RequestGenerator.PUT_sample_entity(
+            created_keys[1], PayloadGenerator.create_new_status_payload("failed")
+        )
+        assert status == 202
+
+        status, response = RequestGenerator.GET_sample_entities(
+            {"name": batch_name, "status": ["success", "failed"]}
+        )
+        assert status == 200
+        assert sorted(extract_keys(response)) == sorted([created_keys[0], created_keys[1]])
+
+        status, response = RequestGenerator.GET_sample_entities(
+            {"name": batch_name, "status": ["pending"]}
+        )
+        assert status == 200
+        assert extract_keys(response) == [created_keys[2]]
+
+    def test_refuses_unknown_status_filter(self):
+        """Status que nao existe e erro, nao lista vazia.
+
+        Antes esta requisicao derrubava a rota com 500: o repositorio
+        procurava o status com `.one()`, que levanta quando nao acha. Um
+        valor digitado errado por quem chama nunca deveria virar erro
+        interno — e uma lista vazia tambem mentiria, dizendo que a busca
+        rodou.
+        """
+        status, response = RequestGenerator.GET_sample_entities({"status": ["status_que_nao_existe"]})
+        assert status == 400
+        assert response["code"] == "QIT000010"
+
+        status, response = RequestGenerator.GET_sample_entities(
+            {"status": ["pending", "status_que_nao_existe"]}
+        )
+        assert status == 400
+        assert response["code"] == "QIT000010"
