@@ -78,6 +78,31 @@ class TestSampleEntities:
         assert status == 400
         assert response["code"] == "QIT000001"
 
+    def test_list_does_not_carry_the_status_trail(self):
+        """A pagina traz o resumo; a historia so no GET por chave.
+
+        Nao e economia de bytes: a trilha e uma segunda tabela, e
+        monta-la item a item custa uma consulta por entidade. Medido
+        com 28 entidades na pagina: 11 ms com o resumo, 45 ms com a
+        trilha junto.
+
+        Este teste e guarda de regressao — ele ja nascia verde. Troque
+        o obj_to_simplified_dict por obj_to_dict no
+        list_obj_to_list_dict e ele fica vermelho.
+        """
+        payload = PayloadGenerator.create_sample_entity_payload()
+        status, response = RequestGenerator.POST_sample_entity(payload)
+        assert status == 201
+        created_key = response["sample_entity_key"]
+
+        status, response = RequestGenerator.GET_sample_entities(
+            {"document_number": payload["document_number"]}
+        )
+        assert status == 200
+        assert extract_keys(response) == [created_key]
+        assert "status_events" not in response["data"][0]
+        assert response["data"][0]["status"] == "pending"
+
     def test_refuses_unknown_query_param(self):
         """Nome de parametro errado e erro, nao silencio.
 

@@ -89,6 +89,8 @@ class TestSampleEntityCreate:
         assert response["document_number"] == document_number
         assert response["birthdate"] == payload["birthdate"]
         assert response["counter"] == 0
+        assert len(response["status_events"]) == 1
+        assert response["status_events"][0]["status"] == "pending"
 
     def test_refuses_impossible_birthdate(self):
         """Formato certo, data inexistente: 422, nunca 500.
