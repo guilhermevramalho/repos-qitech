@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import Query, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -124,11 +126,28 @@ class SampleEntityResource:
         limit: int = Query(default=10, ge=0, le=100),
         page: int = Query(default=0, ge=0),
         status_filter: str = Query(default=None, alias="status"),
+        name: str = Query(default=None, min_length=1, max_length=255),
+        email: str = Query(default=None, min_length=1, max_length=255),
+        document_number: str = Query(default=None, min_length=1, max_length=14),
+        birthdate_from: date = Query(default=None),
+        birthdate_to: date = Query(default=None),
     ) -> JSONResponse:
         controller = SampleEntityController()
 
+        # Os filtros viajam juntos num dicionario em vez de oito
+        # argumentos soltos: cada filtro novo passa a custar uma linha
+        # aqui, e nenhuma assinatura nova nas camadas de baixo.
+        filters = {
+            "status_enumerator": status_filter,
+            "name": name,
+            "email": email,
+            "document_number": document_number,
+            "birthdate_from": birthdate_from,
+            "birthdate_to": birthdate_to,
+        }
+
         offset = page * limit
-        sample_entities_page = controller.get_list(limit, offset, status_filter)
+        sample_entities_page = controller.get_list(limit, offset, filters)
 
         # A paginação é assunto do endereço (?limit=&page=), não da
         # entidade: por isso quem monta o envelope da página é o

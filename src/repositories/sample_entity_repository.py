@@ -65,11 +65,45 @@ class SampleEntityRepository:
     def get_status(self, enumerator: str) -> SampleEntityStatus:
         return self.session.query(SampleEntityStatus).filter(SampleEntityStatus.enumerator == enumerator).one()
 
-    def list_page(self, limit: int, offset: int, status_enumerator: str) -> list:
+    def list_page(self, limit: int, offset: int, filters: dict) -> list:
+        """A pagina, estreitada por quantos filtros vierem preenchidos.
+
+        Todo filtro segue a mesma forma: veio vazio, nao entra na query;
+        veio preenchido, vira mais um `.filter()`. Como cada um deles
+        acrescenta uma condicao a MESMA query, eles se somam com E — dois
+        filtros sempre devolvem menos linhas que um, nunca mais.
+
+        Repare que `ilike` e diferente de `==`: o nome casa por pedaco e
+        sem ligar pra maiuscula, enquanto e-mail e CPF exigem o valor
+        inteiro e exato. Essa diferenca e decisao de produto, nao detalhe
+        tecnico — quem procura uma pessoa lembra meio nome, mas quem
+        procura um CPF tem o CPF.
+        """
         query = self.session.query(SampleEntity)
 
+        status_enumerator = filters.get("status_enumerator")
         if status_enumerator is not None:
             status_model = self.get_status(status_enumerator)
             query = query.filter(SampleEntity.status == status_model)
+
+        name = filters.get("name")
+        if name is not None:
+            query = query.filter(SampleEntity.name.ilike(f"%{name}%"))
+
+        email = filters.get("email")
+        if email is not None:
+            query = query.filter(SampleEntity.email == email)
+
+        document_number = filters.get("document_number")
+        if document_number is not None:
+            query = query.filter(SampleEntity.document_number == document_number)
+
+        birthdate_from = filters.get("birthdate_from")
+        if birthdate_from is not None:
+            query = query.filter(SampleEntity.birthdate >= birthdate_from)
+
+        birthdate_to = filters.get("birthdate_to")
+        if birthdate_to is not None:
+            query = query.filter(SampleEntity.birthdate <= birthdate_to)
 
         return query.limit(limit + 1).offset(offset).all()

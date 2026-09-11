@@ -87,8 +87,8 @@ class SampleEntityController(BaseController):
 
         return SampleEntityDTO.obj_to_dict(sample_entity)
 
-    def get_list(self, limit: int, offset: int, status_enumerator: str) -> dict:
-        sample_entities_list = self.sample_entity_repository.list_page(limit, offset, status_enumerator)
+    def get_list(self, limit: int, offset: int, filters: dict) -> dict:
+        sample_entities_list = self.sample_entity_repository.list_page(limit, offset, filters)
 
         # Pedimos um a mais que o limite só pra saber se existe próxima
         # página. Se veio o extra, ele não entra na resposta.

@@ -1,4 +1,14 @@
+from uuid import uuid4
+
 from tests.utils import DbUtils, PayloadGenerator, RequestGenerator
+
+
+def extract_keys(response: dict) -> list:
+    """As chaves da pagina, na ordem em que a API devolveu."""
+    sample_entity_keys = []
+    for sample_entity in response["data"]:
+        sample_entity_keys.append(sample_entity["sample_entity_key"])
+    return sample_entity_keys
 
 
 class TestSampleEntities:
@@ -63,3 +73,108 @@ class TestSampleEntities:
         status, response = RequestGenerator.GET_sample_entities({"page": -3})
         assert status == 400
         assert response["code"] == "QIT000010"
+
+    def test_filters_by_partial_name_ignoring_case(self):
+        """Nome casa por PEDACO e ignora maiuscula/minuscula.
+
+        E o filtro que a pessoa usa quando lembra so metade do nome. Por
+        isso ele nao compara igualdade: compara conteudo. A busca abaixo
+        manda o sobrenome TODO EM MAIUSCULO de proposito — se o filtro
+        fosse sensivel a caixa, nao acharia nada.
+        """
+        unique_surname = f"Zimmerman{uuid4().hex[:8]}"
+
+        payload = PayloadGenerator.create_sample_entity_payload(name=f"Ana {unique_surname}")
+        status, response = RequestGenerator.POST_sample_entity(payload)
+        assert status == 201
+        matching_key = response["sample_entity_key"]
+
+        payload = PayloadGenerator.create_sample_entity_payload(name="Bruno Carvalho")
+        status, response = RequestGenerator.POST_sample_entity(payload)
+        assert status == 201
+
+        status, response = RequestGenerator.GET_sample_entities({"name": unique_surname.upper()})
+        assert status == 200
+        assert extract_keys(response) == [matching_key]
+
+    def test_filters_by_exact_email_and_document_number(self):
+        """E-mail e CPF casam por IGUALDADE, nao por pedaco.
+
+        A ultima busca manda so o comeco do e-mail. Se o filtro fosse
+        parcial como o de nome, ela acharia o cadastro — e e exatamente
+        isso que o teste proibe.
+        """
+        payload = PayloadGenerator.create_sample_entity_payload()
+        status, response = RequestGenerator.POST_sample_entity(payload)
+        assert status == 201
+        created_key = response["sample_entity_key"]
+
+        status, response = RequestGenerator.GET_sample_entities({"email": payload["email"]})
+        assert status == 200
+        assert extract_keys(response) == [created_key]
+
+        status, response = RequestGenerator.GET_sample_entities(
+            {"document_number": payload["document_number"]}
+        )
+        assert status == 200
+        assert extract_keys(response) == [created_key]
+
+        status, response = RequestGenerator.GET_sample_entities({"email": payload["email"][:10]})
+        assert status == 200
+        assert created_key not in extract_keys(response)
+
+    def test_filters_by_inclusive_birthdate_range(self):
+        """As duas pontas do intervalo ENTRAM no resultado.
+
+        Os dois nascimentos do meio sao exatamente as bordas pedidas. Se
+        o filtro usasse > e < no lugar de >= e <=, o resultado viria
+        vazio — e esse e o erro classico que este teste existe pra pegar.
+
+        O filtro de nome entra junto so pra limitar a busca as entidades
+        deste teste: sem ele, cadastros de outras rodadas com a mesma
+        data apareceriam no meio.
+        """
+        family_name = f"Bernoulli{uuid4().hex[:8]}"
+        birthdates = ["1931-01-01", "1931-01-02", "1931-01-03", "1931-01-04"]
+
+        created_keys = []
+        for birthdate in birthdates:
+            payload = PayloadGenerator.create_sample_entity_payload(
+                name=family_name, birthdate=birthdate
+            )
+            status, response = RequestGenerator.POST_sample_entity(payload)
+            assert status == 201
+            created_keys.append(response["sample_entity_key"])
+
+        status, response = RequestGenerator.GET_sample_entities(
+            {"name": family_name, "birthdate_from": "1931-01-02", "birthdate_to": "1931-01-03"}
+        )
+        assert status == 200
+        assert sorted(extract_keys(response)) == sorted([created_keys[1], created_keys[2]])
+
+    def test_combines_filters_with_and(self):
+        """Dois filtros juntos ESTREITAM o resultado, nao o alargam.
+
+        Os dois cadastros tem o mesmo nome; so um nasceu depois do corte.
+        Se os filtros fossem somados com OU, os dois voltariam.
+        """
+        team_name = f"Curie{uuid4().hex[:8]}"
+
+        payload = PayloadGenerator.create_sample_entity_payload(
+            name=team_name, birthdate="1940-03-01"
+        )
+        status, response = RequestGenerator.POST_sample_entity(payload)
+        assert status == 201
+
+        payload = PayloadGenerator.create_sample_entity_payload(
+            name=team_name, birthdate="1960-03-01"
+        )
+        status, response = RequestGenerator.POST_sample_entity(payload)
+        assert status == 201
+        younger_key = response["sample_entity_key"]
+
+        status, response = RequestGenerator.GET_sample_entities(
+            {"name": team_name, "birthdate_from": "1950-01-01"}
+        )
+        assert status == 200
+        assert extract_keys(response) == [younger_key]
