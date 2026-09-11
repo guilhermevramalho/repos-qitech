@@ -132,8 +132,7 @@ O preço dessa preguiça é que a sessão passou a ser **opcional** — pode
 não existir —, e todo `close` e todo `rollback` precisa perguntar antes
 de agir. Esquecer essa pergunta derruba justamente as rotas que não usam
 banco, com as rotas de banco seguindo verdes. Aconteceu enquanto este
-middleware era escrito; a história está na docstring dele, e
-`tests/integration/test_session_manager.py` existe para que não volte.
+middleware era escrito; a história está na docstring dele.
 
 **E o `commit`?** Nunca é do middleware. Quem sabe se o trabalho terminou
 é o controller, e é por isso que `self.session.commit()` é a última linha

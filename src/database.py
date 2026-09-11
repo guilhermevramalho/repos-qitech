@@ -87,8 +87,7 @@ O que ela compra, então? Duas coisas menores e uma grande. As menores:
 um objeto Python que não é criado, e a garantia de que uma rota que não
 fala com o banco não **dependa** do banco estar de pé. A grande é a
 lição: enquanto a sessão for opcional, todo `close` e todo `rollback`
-precisa perguntar antes de agir — e é essa pergunta que o
-tests/integration/test_session_manager.py cobra.
+precisa perguntar antes de agir.
 
 Ensinar um custo que não existe é pior do que não ensinar nada.
 """

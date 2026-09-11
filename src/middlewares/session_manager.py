@@ -121,9 +121,7 @@ def register_session_manager_middleware(application: FastAPI) -> None:
     • Do jeito preguiçoso, o próprio middleware escreve `= None` na linha
       de cima. É impossível escrever o `finally` sem esbarrar nela.
 
-    Duas perguntas à vista valem mais que uma lista que você não vê. E a
-    guarda tem teste: tests/integration/test_session_manager.py cobra as
-    rotas públicas justamente pra que esse 500 nunca volte calado.
+    Duas perguntas à vista valem mais que uma lista que você não vê.
 
     Uma honestidade a mais, porque a lista de exceções costuma ser
     vendida como uma economia maior do que é: `SessionLocal()` não
