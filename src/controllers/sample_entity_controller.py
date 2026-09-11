@@ -1,12 +1,25 @@
+from datetime import date
+
 from controllers.base_controller import BaseController
 from dtos import SampleEntityDTO
-from errors import NotFoundSampleEntity, SampleEntityFinalStatus
-from models import SampleEntity
+from errors import (
+    DuplicatedDocumentNumber,
+    DuplicatedEmail,
+    InvalidBirthdate,
+    InvalidDocumentNumber,
+    NotFoundSampleEntity,
+    SampleEntityFinalStatus,
+    UnderageSampleEntity,
+)
+from models import SampleEntity, SampleEntityStatus
 from repositories import SampleEntityRepository
+from utils.document_number import is_valid_cpf
 
-
-# Antes de qual status a entidade ainda pode mudar de estado.
-CHANGEABLE_STATUS = "pending"
+# A faixa de idade aceita. Abaixo do mínimo o cadastro é RECUSADO; acima
+# do máximo ele é CRIADO, mas já em "failed" — são desfechos diferentes,
+# e o create lá embaixo mostra a diferença em duas linhas.
+MINIMUM_AGE = 18
+MAXIMUM_AGE = 80
 
 
 class SampleEntityController(BaseController):
@@ -17,10 +30,47 @@ class SampleEntityController(BaseController):
         self.sample_entity_repository = SampleEntityRepository(self.context)
 
     def create(self, sample_entity_data: dict) -> dict:
+        """Confere quem está entrando, e só então cria.
+
+        As quatro perguntas abaixo acontecem ANTES de qualquer escrita, e
+        essa ordem é a regra: uma recusa não pode deixar meia entidade no
+        banco. Repare que nenhuma delas é sobre FORMATO — isso o schema
+        já cobrou lá na porta. Aqui é sobre o que só se sabe olhando o
+        mundo: se o número existe, se alguém já usou, que idade a pessoa
+        tem hoje.
+        """
         self.logger.debug("Criando uma nova Sample Entity")
 
+        document_number = sample_entity_data["document_number"]
+        email = sample_entity_data["email"]
+        birthdate = self._parse_birthdate(sample_entity_data["birthdate"])
+
+        if not is_valid_cpf(document_number):
+            raise InvalidDocumentNumber(document_number)
+
+        if self.sample_entity_repository.get_by_document_number(document_number) is not None:
+            raise DuplicatedDocumentNumber(document_number)
+
+        if self.sample_entity_repository.get_by_email(email) is not None:
+            raise DuplicatedEmail(email)
+
+        age = self._age_in_years(birthdate)
+
+        if age < MINIMUM_AGE:
+            raise UnderageSampleEntity(age, MINIMUM_AGE)
+
         sample_entity = self.sample_entity_repository.create(sample_entity_data=sample_entity_data)
-        self.sample_entity_repository.update_status(sample_entity, "pending")
+
+        # Passar da idade máxima não impede o cadastro: ele nasce em
+        # "failed". É a diferença entre recusar o pedido e aceitá-lo com
+        # outro desfecho — e as duas regras moram lado a lado de
+        # propósito, pra que a diferença fique à vista.
+        if age > MAXIMUM_AGE:
+            new_status = SampleEntityStatus.FAILED
+        else:
+            new_status = SampleEntityStatus.PENDING
+
+        self.sample_entity_repository.update_status(sample_entity, new_status)
 
         sample_entity_dto = SampleEntityDTO.only_obj_key(sample_entity)
         self.session.commit()
@@ -67,12 +117,6 @@ class SampleEntityController(BaseController):
 
         return sample_entity_dto
 
-    def _check_status_can_change(self, sample_entity: SampleEntity, new_status: str) -> None:
-        old_status = sample_entity.status.enumerator
-
-        if old_status != CHANGEABLE_STATUS:
-            raise SampleEntityFinalStatus(old_status, new_status)
-
     def webhook_increment_counter(self, sample_entity_key: str) -> None:
         self.logger.debug(f"Processando webhook da entidade {sample_entity_key}")
 
@@ -81,6 +125,36 @@ class SampleEntityController(BaseController):
         if sample_entity is None:
             raise NotFoundSampleEntity(sample_entity_key)
 
-        sample_entity.counter += 1
+        self.sample_entity_repository.increment_counter(sample_entity)
 
         self.session.commit()
+
+    def _check_status_can_change(self, sample_entity: SampleEntity, new_status: str) -> None:
+        old_status = sample_entity.status.enumerator
+
+        if old_status != SampleEntityStatus.PENDING:
+            raise SampleEntityFinalStatus(old_status, new_status)
+
+    def _parse_birthdate(self, raw_birthdate: str) -> date:
+        """Converte a data, ou recusa com 422 em vez de 500.
+
+        O schema já garantiu o FORMATO (quatro dígitos, traço, dois,
+        traço, dois). O que ele não sabe é quantos dias fevereiro tem —
+        um `pattern` conta caracteres, não consulta calendário. Por isso
+        "2025-02-30" chega aqui intacto, e é aqui que ele para.
+        """
+        try:
+            return date.fromisoformat(raw_birthdate)
+        except ValueError:
+            raise InvalidBirthdate(raw_birthdate)
+
+    def _age_in_years(self, birthdate: date) -> int:
+        today = date.today()
+        age = today.year - birthdate.year
+
+        # Quem ainda não fez aniversário este ano tem um ano a menos do
+        # que a subtração acima diz.
+        if (today.month, today.day) < (birthdate.month, birthdate.day):
+            age = age - 1
+
+        return age

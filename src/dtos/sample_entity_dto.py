@@ -27,8 +27,12 @@ class SampleEntityDTO:
         # linhas abaixo sujariam esse objeto — que o resto da
         # requisição ainda vai usar.
         dto = deepcopy(sample_entity.sample_entity_data)
-        dto["status"] = sample_entity.status.enumerator
         dto["sample_entity_key"] = sample_entity.sample_entity_key
+        dto["name"] = sample_entity.name
+        dto["email"] = sample_entity.email
+        dto["document_number"] = sample_entity.document_number
+        dto["birthdate"] = sample_entity.birthdate.isoformat()
+        dto["status"] = sample_entity.status.enumerator
         dto["counter"] = sample_entity.counter
 
         return dto

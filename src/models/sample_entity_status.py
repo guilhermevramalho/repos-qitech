@@ -10,3 +10,8 @@ class SampleEntityStatus(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
     __table_args__ = (UniqueConstraint("enumerator"),)
+
+    CREATED = "created"
+    PENDING = "pending"
+    FAILED = "failed"
+    SUCCESS = "success"

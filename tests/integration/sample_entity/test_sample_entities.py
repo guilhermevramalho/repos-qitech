@@ -1,19 +1,17 @@
-from tests.utils import RequestGenerator, DbUtils
+from tests.utils import DbUtils, PayloadGenerator, RequestGenerator
 
 
 class TestSampleEntities:
     def test_get_pages(self):
         DbUtils.rollback()
 
-        payload = {"hello": "world"}
-        status, response = RequestGenerator.POST_sample_entity(payload)
-        assert status == 201
-
-        status, response = RequestGenerator.POST_sample_entity(payload)
-        assert status == 201
-
-        status, response = RequestGenerator.POST_sample_entity(payload)
-        assert status == 201
+        # Um payload novo por entidade, e nao o mesmo tres vezes: cada
+        # cadastro precisa do proprio CPF e do proprio e-mail, senao o
+        # segundo POST bate na regra de duplicidade do controller.
+        for _entidade in range(3):
+            payload = PayloadGenerator.create_sample_entity_payload()
+            status, response = RequestGenerator.POST_sample_entity(payload)
+            assert status == 201
 
         status, response = RequestGenerator.GET_sample_entities()
         assert status == 200
@@ -33,17 +31,16 @@ class TestSampleEntities:
     def test_get_filtered(self):
         DbUtils.rollback()
 
-        payload = {"hello": "world"}
+        payload = PayloadGenerator.create_sample_entity_payload()
         status, response = RequestGenerator.POST_sample_entity(payload)
         assert status == 201
 
         _key1 = response["sample_entity_key"]
 
-        status, response = RequestGenerator.POST_sample_entity(payload)
-        assert status == 201
-
-        status, response = RequestGenerator.POST_sample_entity(payload)
-        assert status == 201
+        for _entidade in range(2):
+            payload = PayloadGenerator.create_sample_entity_payload()
+            status, response = RequestGenerator.POST_sample_entity(payload)
+            assert status == 201
 
         new_status = "success"
         payload = {"status": new_status}
