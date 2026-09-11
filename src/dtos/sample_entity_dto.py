@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import List
 
-from models import SampleEntity, SampleEntityStatusEvent
+from models import SampleEntity
 
 
 class SampleEntityDTO:
@@ -29,12 +29,17 @@ class SampleEntityDTO:
         linha em sample_entity_status_event, e é aqui que essas linhas
         viram resposta.
         """
-        dto = SampleEntityDTO.obj_to_simplified_dict(sample_entity)
-        dto["status_events"] = SampleEntityDTO.list_status_events_to_list_dict(
-            sample_entity.status_events
-        )
+        sample_entity_dto = SampleEntityDTO.obj_to_simplified_dict(sample_entity)
+        sample_entity_dto["status_events"] = []
 
-        return dto
+        for status_event in sample_entity.status_events:
+            status_event_dto = dict()
+            status_event_dto["status"] = status_event.status.enumerator
+            status_event_dto["event_datetime"] = status_event.event_datetime.isoformat()
+
+            sample_entity_dto["status_events"].append(status_event_dto)
+
+        return sample_entity_dto
 
     @staticmethod
     def obj_to_simplified_dict(sample_entity: SampleEntity) -> dict:
@@ -67,25 +72,6 @@ class SampleEntityDTO:
         dto["counter"] = sample_entity.counter
 
         return dto
-
-    @staticmethod
-    def status_event_to_dict(status_event: SampleEntityStatusEvent) -> dict:
-        dto = dict()
-        dto["status"] = status_event.status.enumerator
-        dto["event_datetime"] = status_event.event_datetime.isoformat()
-
-        return dto
-
-    @staticmethod
-    def list_status_events_to_list_dict(
-        status_events_list: List[SampleEntityStatusEvent],
-    ) -> List[dict]:
-        status_events_dict_list = []
-
-        for status_event in status_events_list:
-            status_events_dict_list.append(SampleEntityDTO.status_event_to_dict(status_event))
-
-        return status_events_dict_list
 
     @staticmethod
     def list_obj_to_list_dict(sample_entities_list: List[SampleEntity]) -> List[dict]:
