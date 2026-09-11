@@ -38,7 +38,6 @@ class RequestGenerator:
         return response.response_status, response.response_json
 
     @staticmethod
-    @staticmethod
     def PUT_webhook_sample_entity(sample_entity_key: str) -> BaseConnectorResponse:
         response = ClientRequisition.send(
             "PUT",

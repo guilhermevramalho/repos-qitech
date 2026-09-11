@@ -10,11 +10,11 @@ from utils.logger import get_logger
 class RestConnector(metaclass=ABCMeta):
     """O que todo connector tem em comum: como falar com outro serviço.
 
-    Este arquivo é pra chamada HTTP o que o database.py é pro banco e o
-    o ÚNICO lugar que sabe COMO se fala com um serviço
-    de fora. Quem precisa de outro serviço não escreve requests.get() no
-    meio do código — cria um connector (veja o bankslip_connector.py) e
-    chama um método com nome de gente.
+    Este arquivo é pra chamada HTTP o que o database.py é pro banco: o
+    ÚNICO lugar que sabe COMO se fala com um serviço de fora. Quem
+    precisa de outro serviço não escreve requests.get() no meio do
+    código — cria um connector (veja o bankslip_connector.py) e chama
+    um método com nome de gente.
 
     O que mora aqui, e por quê:
 
@@ -38,7 +38,8 @@ class RestConnector(metaclass=ABCMeta):
         self.internal_token = internal_token
 
     def send(self, endpoint: str, method: str, payload: dict = None, headers: dict = None):
-        headers = {} if headers is None else headers
+        if headers is None:
+            headers = {}
 
         # Os serviços da QI se autenticam entre si do mesmo jeito que
         # esta API exige de quem a chama: o header INTERNAL-TOKEN.
