@@ -138,12 +138,12 @@ class SampleEntityResource:
         que fevereiro nao tem dia 30 — e quem recusa valor impossivel e
         o controller, nao o resource.
         """
+        controller = SampleEntityController()
+
         query_params = request.query_params
 
         limit = int(query_params.get("limit", DEFAULT_LIMIT))
         page = int(query_params.get("page", DEFAULT_PAGE))
-
-        controller = SampleEntityController()
 
         # Os filtros viajam juntos num dicionario em vez de seis
         # argumentos soltos: cada filtro novo passa a custar uma linha
