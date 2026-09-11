@@ -178,3 +178,38 @@ class TestSampleEntities:
         )
         assert status == 200
         assert extract_keys(response) == [younger_key]
+
+    def test_lists_newest_first_and_pages_do_not_overlap(self):
+        """A pagina tem ORDEM, e por isso paginar nao repete nem pula.
+
+        Sem um ORDER BY, `limit` e `offset` respondem sobre um conjunto
+        que o banco pode devolver em qualquer ordem — e "os 2 primeiros"
+        seguido de "pulando 2" chega a repetir uma linha e sumir com
+        outra. Nao e teoria: e o que o SQL permite quando ninguem manda
+        ordenar.
+
+        As tres entidades nascem em sequencia, entao a mais recente e a
+        ultima criada.
+        """
+        batch_name = f"Noether{uuid4().hex[:8]}"
+
+        created_keys = []
+        for _entidade in range(3):
+            payload = PayloadGenerator.create_sample_entity_payload(name=batch_name)
+            status, response = RequestGenerator.POST_sample_entity(payload)
+            assert status == 201
+            created_keys.append(response["sample_entity_key"])
+
+        created_keys.reverse()
+
+        status, response = RequestGenerator.GET_sample_entities({"name": batch_name, "limit": 2})
+        assert status == 200
+        assert extract_keys(response) == created_keys[:2]
+        assert response["is_last_page"] is False
+
+        status, response = RequestGenerator.GET_sample_entities(
+            {"name": batch_name, "limit": 2, "page": 1}
+        )
+        assert status == 200
+        assert extract_keys(response) == created_keys[2:]
+        assert response["is_last_page"] is True

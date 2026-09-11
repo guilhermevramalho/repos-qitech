@@ -78,6 +78,14 @@ class SampleEntityRepository:
         inteiro e exato. Essa diferenca e decisao de produto, nao detalhe
         tecnico — quem procura uma pessoa lembra meio nome, mas quem
         procura um CPF tem o CPF.
+
+        A ordenacao no fim nao e enfeite: `limit` e `offset` recortam
+        um conjunto, e um conjunto sem ordem pode voltar do banco em
+        qualquer sequencia. Sem o `order_by`, a pagina 2 tem permissao
+        de repetir uma linha da pagina 1 e sumir com outra. O desempate
+        por `id` existe porque duas entidades podem nascer no mesmo
+        instante — e ai `created_at` sozinho ainda deixaria a ordem em
+        aberto.
         """
         query = self.session.query(SampleEntity)
 
@@ -105,5 +113,7 @@ class SampleEntityRepository:
         birthdate_to = filters.get("birthdate_to")
         if birthdate_to is not None:
             query = query.filter(SampleEntity.birthdate <= birthdate_to)
+
+        query = query.order_by(SampleEntity.created_at.desc(), SampleEntity.id.desc())
 
         return query.limit(limit + 1).offset(offset).all()
