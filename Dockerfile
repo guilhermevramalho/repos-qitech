@@ -20,7 +20,7 @@ FROM base AS api
 RUN chown -R user /app
 USER user
 
-# --no-server-header: o uvicorn nao anuncia a propria versao.
-# Quem responde o cabecalho Server e o nosso middleware de seguranca.
+# --no-server-header: o uvicorn nao anuncia a propria versao, que e
+# informacao de menos pra quem procura uma versao com falha conhecida.
 CMD uvicorn app:app --host 0.0.0.0 --port 3000 --no-server-header
 

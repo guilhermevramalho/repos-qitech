@@ -205,7 +205,6 @@ curl -i "http://localhost:3000/sample_entities?limit=1" \
 HTTP/1.1 200 OK
 content-type: application/json
 x-request-id: 8f3c1e42-1b0d-4f77-9a55-2e4c9d1f0abc
-server: undisclosed
 ...
 ```
 
