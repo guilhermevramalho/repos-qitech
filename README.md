@@ -276,30 +276,50 @@ docker compose down
 
 ## 2. Rodando os testes
 
-**Um comando, em outro terminal, dentro da pasta do projeto:**
+Os testes rodam **na sua máquina**, contra a API que está de pé no
+Docker. Então são dois passos: um de uma vez só, outro toda vez.
+
+**Uma vez só — instalar as dependências de teste:**
 
 ```bash
-docker compose run --rm tests
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
 ```
 
-Não precisa ter nada de pé antes: se não estiver, este mesmo comando
-sobe o banco e a API, espera os dois responderem e só então roda a
-suíte. Não precisa de Python instalado, nem de `pip`, nem de
-cliente de banco — tudo isso vive dentro do container de testes.
+O `.venv` é uma pasta com um Python só deste projeto. Ele existe pra que
+instalar algo aqui não mexa no Python da sua máquina — e pra que apagar a
+pasta desfaça tudo. No Windows, a segunda linha é
+`.venv\Scripts\activate`.
+
+**Toda vez — com a API de pé, em outro terminal:**
+
+```bash
+pytest
+```
+
+A API precisa estar respondendo antes. Se você acabou de dar
+`docker compose up`, espere o `(healthy)` aparecer — é o healthcheck do
+`docker-compose.yml` dizendo que a porta já atende. Sem isso, o primeiro
+teste bate numa porta que ainda não responde.
 
 O resultado sai assim:
 
 ```
-tests/integration/test_documentation_disabled.py::TestDocumentationDisabled::test_documentation_endpoints_are_not_served PASSED
+tests/integration/sample_entity/test_sample_entity_create.py::TestSampleEntityCreate::test_creates_entity_in_pending PASSED
 ...
-============================== 31 passed in 1.50s ==============================
+============================== 37 passed in 1.56s ==============================
 ```
 
 Para rodar só um arquivo (ou só um teste), acrescente o caminho:
 
 ```bash
-docker compose run --rm tests pytest -v tests/integration/test_healthcheck.py
+pytest -v tests/integration/test_healthcheck.py
 ```
+
+Os testes leem o seu `.env` sozinhos (é o `tests/conftest.py` que faz
+isso). Trocou a porta da API ali, os testes passam a bater na porta nova
+— você não configura a mesma coisa em dois lugares.
 
 Os testes conversam com a API **por HTTP**, exatamente como um cliente de
 verdade faria. Eles não espiam o código por dentro — não sabem que existe

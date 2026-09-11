@@ -2,9 +2,10 @@
 #
 #     docker compose up
 #
-# E roda a suite de testes com outro:
+# Os testes rodam na sua maquina, contra a API que subiu aqui:
 #
-#     docker compose run --rm tests
+#     pip install -r requirements-dev.txt
+#     pytest
 #
 # Nao precisa criar arquivo nenhum antes: cada configuracao abaixo tem um
 # valor padrao, escrito no proprio ${VARIAVEL:-padrao}. Le-se assim:
@@ -41,9 +42,10 @@ services:
     # --reload: salvou o arquivo, a API reinicia sozinha.
     command: uvicorn app:app --host 0.0.0.0 --port 3000 --no-server-header --reload
     healthcheck:
-      # "Subiu" nao e a mesma coisa que "ja responde". Quem espera por
-      # isto e o servico de testes, logo abaixo: sem esta checagem, o
-      # primeiro teste bateria numa porta que ainda nao atende.
+      # "Subiu" nao e a mesma coisa que "ja responde". E esta checagem
+      # que diz quando a API passa a atender de verdade — espere ela
+      # ficar (healthy) antes de rodar o pytest, ou o primeiro teste
+      # bate numa porta que ainda nao responde.
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:3000/health_check\")'"]
       interval: 3s
       timeout: 5s
@@ -69,38 +71,3 @@ services:
       timeout: 3s
       retries: 20
 
-  # Os testes rodam DENTRO do Docker, num container que ja tem Python e
-  # pytest instalados. Voce nao precisa de nada disso na sua maquina:
-  #
-  #     docker compose run --rm tests
-  #
-  # O "profiles" abaixo mantem este servico fora do "docker compose up":
-  # ele so entra em cena quando voce pede os testes.
-  tests:
-    profiles: ["test"]
-    build:
-      context: .
-      target: tests
-    environment:
-      # De dentro da rede do compose, a API e o banco atendem pelo NOME
-      # do servico (api, db) e pela porta de dentro do container (3000,
-      # 5432) — as portas da sua maquina nao valem aqui. Por isso estas
-      # quatro linhas sao fixas, sem padrao pra sobrescrever.
-      APP_ENV: test
-      DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
-      SERVER_LOCALHOST: api
-      API_PORT: "3000"
-      # Esta, sim, acompanha a API: se voce trocar o token, os testes
-      # precisam mandar o token novo pra nao levarem 403.
-      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
-      # O cache do pytest fica dentro do container, nao na sua pasta.
-      PYTHONDONTWRITEBYTECODE: "1"
-      PYTEST_ADDOPTS: "-o cache_dir=/tmp/pytest_cache"
-    volumes:
-      # Teste que voce escrever agora roda ja no proximo comando,
-      # sem precisar montar a imagem de novo.
-      - ./tests:/workspace/tests
-      - ./database:/workspace/database
-    depends_on:
-      api:
-        condition: service_healthy

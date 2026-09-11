@@ -215,31 +215,41 @@ verdade ninguém apaga o banco, claro: lá a mudança de schema entra por
 um comando aplicado no deploy, e é por isso que este projeto guarda o
 schema num arquivo versionado em vez de deixá-lo só dentro do banco.
 
-**Mexeu numa dependência e o `docker compose build` passou?** Ele passa
-mesmo — sem ter construído os testes uma única vez. O serviço `tests`
-tem `profiles: ["test"]` no `docker-compose.yml`, e é isso que o mantém
-fora do build padrão: o comando monta a API, termina com
-sucesso, e você fica com a impressão de que está tudo de pé. O
-`docker compose run --rm tests` seguinte também não desmente — ele
-reaproveita a imagem de teste que já existe na sua máquina, mesmo que
-ela tenha sido montada semanas atrás.
+**Mexeu numa dependência?** Então preste atenção, porque agora ela mora
+em dois lugares — e eles não se falam.
 
-O resultado é o pior tipo de erro: ele não acontece com você, acontece
-com quem clonar o projeto do zero. O build que de fato valida a suíte
-pede o perfil:
+As dependências da aplicação são instaladas **dentro da imagem**, quando
+o Docker constrói a API. As de teste ficam no **seu `.venv`**, na sua
+máquina. Acrescentar uma linha no `requirements.txt` não avisa nenhum dos
+dois: o container continua com a imagem que ele já tinha, e o seu `.venv`
+continua com o que você instalou da última vez.
 
-```bash
-docker compose --profile test build tests
-```
+O sintoma é enganoso. Se a biblioteca nova é usada pelo **código da API**,
+os testes quebram com um erro que parece de teste, mas vem do container.
+Se é usada só pelos **testes**, tudo passa na sua máquina e quebra na de
+quem clonar o projeto.
 
-E quando o que você mexeu foi dependência (`requirements.txt` ou
-`requirements-dev.txt`), acrescente o `--no-cache` — sem ele o Docker
-reaproveita a camada do `pip install`, que é justamente a que você
-precisa ver rodar de novo:
+Mexeu no `requirements.txt`, reconstrua a imagem:
 
 ```bash
-docker compose --profile test build --no-cache tests
+docker compose build --no-cache api
+docker compose up -d
 ```
+
+O `--no-cache` é o que importa: sem ele o Docker reaproveita a camada do
+`pip install`, que é justamente a que você precisa ver rodar de novo.
+
+Mexeu no `requirements-dev.txt`, reinstale no seu ambiente:
+
+```bash
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+```
+
+Esse é o preço de rodar os testes fora do Docker: você ganha um ciclo
+mais rápido e perde a garantia de que a sua máquina e a imagem estão
+sincronizadas. Quem clona o projeto do zero faz os dois passos; quem já
+tem tudo de pé precisa lembrar de qual dos dois arquivos mudou.
 
 ---
 
