@@ -17,6 +17,22 @@ class TestSampleEntityUpdate:
         assert response["sample_entity_key"] == _key
         assert response["status"] == "success"
 
+    def test_schema_refuses_status_outside_the_enum(self):
+        """So os status que o schema lista sao aceitos.
+
+        O "enum": ["success", "failed"] do put_sample_entity.json e a
+        maquina de estados escrita no contrato de entrada: um status
+        inventado nem chega na regra de negocio.
+        """
+        sample_entity = ObjectGenerator.create_sample_entity()
+        _key = sample_entity["sample_entity_key"]
+
+        payload = PayloadGenerator.create_new_status_payload("status_que_nao_existe")
+
+        status, response = RequestGenerator.PUT_sample_entity(_key, payload)
+        assert status == 400
+        assert response["code"] == "QIT000001"
+
     def test_webhook(self):
 
         sample_entity = ObjectGenerator.create_sample_entity()

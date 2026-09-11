@@ -1,18 +1,20 @@
 from fastapi import APIRouter, Query, Response, status
 
 from controllers import SampleEntityController
-from schemas import CreateSampleEntityRequest, UpdateSampleEntityStatusRequest
+from utils.schema_handler import SchemaHandler
 
 
 router = APIRouter()
 
 
 @router.post("/sample_entity", status_code=status.HTTP_201_CREATED)
-def create_sample_entity(payload: CreateSampleEntityRequest) -> dict:
-    # Se o código chegou até aqui, o payload JÁ foi validado pelo Pydantic.
-    # A rota não precisa checar nada: ela só chama a regra de negócio.
+@SchemaHandler.validate("post_sample_entity.json")
+def create_sample_entity(payload: dict) -> dict:
+    # Se o código chegou até aqui, o payload JÁ foi validado contra o
+    # src/schemas/post_sample_entity.json. A rota não precisa checar
+    # nada: ela só chama a regra de negócio.
     controller = SampleEntityController()
-    return controller.create(payload.model_dump())
+    return controller.create(payload)
 
 
 @router.get("/sample_entity/{sample_entity_key}", status_code=status.HTTP_200_OK)
@@ -22,9 +24,10 @@ def get_sample_entity(sample_entity_key: str) -> dict:
 
 
 @router.put("/sample_entity/{sample_entity_key}", status_code=status.HTTP_202_ACCEPTED)
-def update_sample_entity(sample_entity_key: str, payload: UpdateSampleEntityStatusRequest) -> dict:
+@SchemaHandler.validate("put_sample_entity.json")
+def update_sample_entity(sample_entity_key: str, payload: dict) -> dict:
     controller = SampleEntityController()
-    return controller.update_status(sample_entity_key, payload.status)
+    return controller.update_status(sample_entity_key, payload["status"])
 
 
 @router.post("/sample_entity/{sample_entity_key}/process", status_code=status.HTTP_202_ACCEPTED)
