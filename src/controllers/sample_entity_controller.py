@@ -7,6 +7,7 @@ from errors import (
     DuplicatedEmail,
     InvalidBirthdate,
     InvalidDocumentNumber,
+    InvalidParameter,
     NotFoundSampleEntity,
     SampleEntityFinalStatus,
     UnderageSampleEntity,
@@ -88,6 +89,26 @@ class SampleEntityController(BaseController):
         return SampleEntityDTO.obj_to_dict(sample_entity)
 
     def get_list(self, limit: int, offset: int, filters: dict) -> dict:
+        """A pagina pedida, depois de conferir se o pedido faz sentido.
+
+        Um intervalo de nascimento de cabeca pra baixo — comeco depois
+        do fim — nunca pode achar ninguem. Devolver zero linhas nesse
+        caso mente por omissao: parece que a busca rodou e nao
+        encontrou, quando na verdade a pergunta e que nao tinha
+        resposta possivel.
+
+        Quem decide que um pedido nao pode ser respondido e este
+        controller. O resource fala HTTP, nao julga pedido.
+        """
+        birthdate_from = filters.get("birthdate_from")
+        birthdate_to = filters.get("birthdate_to")
+
+        if birthdate_from is not None and birthdate_to is not None:
+            if birthdate_from > birthdate_to:
+                raise InvalidParameter(
+                    f"birthdate_from ({birthdate_from}) is after birthdate_to ({birthdate_to})"
+                )
+
         sample_entities_list = self.sample_entity_repository.list_page(limit, offset, filters)
 
         # Pedimos um a mais que o limite só pra saber se existe próxima

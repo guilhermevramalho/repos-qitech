@@ -5,7 +5,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from controllers import SampleEntityController
-from errors import InvalidParameter
 from utils.schema_handler import SchemaHandler
 
 
@@ -133,16 +132,6 @@ class SampleEntityResource:
         birthdate_from: date = Query(default=None),
         birthdate_to: date = Query(default=None),
     ) -> JSONResponse:
-        # Esta checagem mora no resource, e nao no controller, porque
-        # ela fala de dois PARAMETROS entre si — nao de regra de
-        # negocio. Um GET nao tem schema de corpo pra cobrar isso, e
-        # este e o unico lugar onde os dois valores existem lado a lado.
-        if birthdate_from is not None and birthdate_to is not None:
-            if birthdate_from > birthdate_to:
-                raise InvalidParameter(
-                    f"birthdate_from ({birthdate_from}) is after birthdate_to ({birthdate_to})"
-                )
-
         controller = SampleEntityController()
 
         # Os filtros viajam juntos num dicionario em vez de oito
