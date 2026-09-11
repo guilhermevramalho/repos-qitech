@@ -213,3 +213,17 @@ class TestSampleEntities:
         assert status == 200
         assert extract_keys(response) == created_keys[2:]
         assert response["is_last_page"] is True
+
+    def test_refuses_inverted_birthdate_range(self):
+        """Intervalo de cabeca pra baixo e erro, nao lista vazia.
+
+        Pedir de 2000 ate 1990 nunca pode dar resultado — e quando uma
+        pergunta nao tem como ser respondida, devolver zero linhas mente:
+        parece que a busca rodou e nao achou ninguem. O 400 diz a verdade,
+        que a pergunta e que estava errada.
+        """
+        status, response = RequestGenerator.GET_sample_entities(
+            {"birthdate_from": "2000-01-01", "birthdate_to": "1990-01-01"}
+        )
+        assert status == 400
+        assert response["code"] == "QIT000010"
