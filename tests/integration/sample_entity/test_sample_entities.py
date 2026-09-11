@@ -72,7 +72,25 @@ class TestSampleEntities:
     def test_wrong_params(self):
         status, response = RequestGenerator.GET_sample_entities({"page": -3})
         assert status == 400
-        assert response["code"] == "QIT000010"
+        assert response["code"] == "QIT000001"
+
+        status, response = RequestGenerator.GET_sample_entities({"limit": 500})
+        assert status == 400
+        assert response["code"] == "QIT000001"
+
+    def test_refuses_unknown_query_param(self):
+        """Nome de parametro errado e erro, nao silencio.
+
+        Este e o ganho menos obvio de validar a query string por
+        schema. Quem escreve `?stauts=pending` com a letra trocada
+        recebia 200 com a lista inteira e concluia que o filtro nao
+        funciona — porque um framework so entrega o que ele declarou, e
+        o que ele nao conhece ele ignora calado. O
+        `additionalProperties: false` do schema devolve o engano.
+        """
+        status, response = RequestGenerator.GET_sample_entities({"stauts": "pending"})
+        assert status == 400
+        assert response["code"] == "QIT000001"
 
     def test_filters_by_partial_name_ignoring_case(self):
         """Nome casa por PEDACO e ignora maiuscula/minuscula.
@@ -272,18 +290,17 @@ class TestSampleEntities:
     def test_refuses_unknown_status_filter(self):
         """Status que nao existe e erro, nao lista vazia.
 
-        Antes esta requisicao derrubava a rota com 500: o repositorio
-        procurava o status com `.one()`, que levanta quando nao acha. Um
-        valor digitado errado por quem chama nunca deveria virar erro
-        interno — e uma lista vazia tambem mentiria, dizendo que a busca
-        rodou.
+        Quem recusa e o `enum` do src/schemas/get_sample_entities.json,
+        o mesmo mecanismo que confere o corpo de um POST. Uma lista
+        vazia mentiria aqui, dizendo que a busca rodou e nao achou
+        ninguem.
         """
         status, response = RequestGenerator.GET_sample_entities({"status": ["status_que_nao_existe"]})
         assert status == 400
-        assert response["code"] == "QIT000010"
+        assert response["code"] == "QIT000001"
 
         status, response = RequestGenerator.GET_sample_entities(
             {"status": ["pending", "status_que_nao_existe"]}
         )
         assert status == 400
-        assert response["code"] == "QIT000010"
+        assert response["code"] == "QIT000001"

@@ -22,17 +22,6 @@ from utils.document_number import is_valid_cpf
 MINIMUM_AGE = 18
 MAXIMUM_AGE = 80
 
-# Os status pelos quais a listagem aceita filtrar. Sao os mesmos que o
-# database.sql semeia na tabela sample_entity_status — a lista aqui
-# aponta pras constantes do model em vez de repetir os textos, pra que
-# um status novo nao precise ser escrito em dois lugares.
-VALID_STATUS_FILTERS = (
-    SampleEntityStatus.CREATED,
-    SampleEntityStatus.PENDING,
-    SampleEntityStatus.SUCCESS,
-    SampleEntityStatus.FAILED,
-)
-
 
 class SampleEntityController(BaseController):
     """As regras de negócio. Aqui mora o "pode" e o "não pode"."""
@@ -110,19 +99,23 @@ class SampleEntityController(BaseController):
 
         Quem decide que um pedido nao pode ser respondido e este
         controller. O resource fala HTTP, nao julga pedido.
+
+        Repare no que NAO esta mais aqui: a lista de status validos.
+        Aquilo era conferir se um valor pertence a um conjunto fixo —
+        exatamente o que um `enum` de JSON Schema faz, e agora faz, no
+        src/schemas/get_sample_entities.json. O que sobrou e o que
+        nenhum schema sabe fazer: comparar dois campos ENTRE SI.
         """
-        status_enumerators = filters.get("status_enumerators")
-
-        if status_enumerators is not None:
-            for status_enumerator in status_enumerators:
-                if status_enumerator not in VALID_STATUS_FILTERS:
-                    raise InvalidParameter(
-                        f"status {status_enumerator} is not one of "
-                        + ", ".join(VALID_STATUS_FILTERS)
-                    )
-
         birthdate_from = filters.get("birthdate_from")
         birthdate_to = filters.get("birthdate_to")
+
+        if birthdate_from is not None:
+            birthdate_from = self._parse_birthdate(birthdate_from)
+            filters["birthdate_from"] = birthdate_from
+
+        if birthdate_to is not None:
+            birthdate_to = self._parse_birthdate(birthdate_to)
+            filters["birthdate_to"] = birthdate_to
 
         if birthdate_from is not None and birthdate_to is not None:
             if birthdate_from > birthdate_to:

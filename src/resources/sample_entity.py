@@ -1,11 +1,13 @@
-from datetime import date
-
-from fastapi import Query, Response, status
+from fastapi import Request, Response
+from fastapi import status as http_status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from controllers import SampleEntityController
 from utils.schema_handler import SchemaHandler
+
+DEFAULT_LIMIT = 10
+DEFAULT_PAGE = 0
 
 
 class SampleEntityResource:
@@ -94,7 +96,7 @@ class SampleEntityResource:
 
         return JSONResponse(
             content=jsonable_encoder(sample_entity),
-            status_code=status.HTTP_201_CREATED,
+            status_code=http_status.HTTP_201_CREATED,
         )
 
     def on_get_by_key(self, sample_entity_key: str) -> JSONResponse:
@@ -103,7 +105,7 @@ class SampleEntityResource:
 
         return JSONResponse(
             content=jsonable_encoder(sample_entity),
-            status_code=status.HTTP_200_OK,
+            status_code=http_status.HTTP_200_OK,
         )
 
     @SchemaHandler.validate("put_sample_entity.json")
@@ -113,37 +115,46 @@ class SampleEntityResource:
 
         return JSONResponse(
             content=jsonable_encoder(sample_entity),
-            status_code=status.HTTP_202_ACCEPTED,
+            status_code=http_status.HTTP_202_ACCEPTED,
         )
 
     def on_put_increment_counter(self, sample_entity_key: str) -> Response:
         controller = SampleEntityController()
         controller.webhook_increment_counter(sample_entity_key)
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=http_status.HTTP_204_NO_CONTENT)
 
-    def on_get_list(
-        self,
-        limit: int = Query(default=10, ge=0, le=100),
-        page: int = Query(default=0, ge=0),
-        status_filter: list[str] = Query(default=None, alias="status"),
-        name: str = Query(default=None, min_length=1, max_length=255),
-        email: str = Query(default=None, min_length=1, max_length=255),
-        document_number: str = Query(default=None, min_length=1, max_length=14),
-        birthdate_from: date = Query(default=None),
-        birthdate_to: date = Query(default=None),
-    ) -> JSONResponse:
+    @SchemaHandler.validate_query_params("get_sample_entities.json")
+    def on_get_list(self, request: Request) -> JSONResponse:
+        """A pagina pedida, com os filtros que vierem na query string.
+
+        O decorator ja conferiu tudo contra o
+        src/schemas/get_sample_entities.json antes desta primeira linha
+        rodar — mesmo mecanismo que confere o corpo do POST, mesmo tipo
+        de arquivo. Por isso os `int()` abaixo nao tem try: o schema
+        garantiu que so chega digito.
+
+        A conversao de DATA nao acontece aqui. O schema garante o
+        formato (quatro digitos, traco, dois, traco, dois), mas nao sabe
+        que fevereiro nao tem dia 30 — e quem recusa valor impossivel e
+        o controller, nao o resource.
+        """
+        query_params = request.query_params
+
+        limit = int(query_params.get("limit", DEFAULT_LIMIT))
+        page = int(query_params.get("page", DEFAULT_PAGE))
+
         controller = SampleEntityController()
 
-        # Os filtros viajam juntos num dicionario em vez de oito
+        # Os filtros viajam juntos num dicionario em vez de seis
         # argumentos soltos: cada filtro novo passa a custar uma linha
         # aqui, e nenhuma assinatura nova nas camadas de baixo.
         filters = {
-            "status_enumerators": status_filter,
-            "name": name,
-            "email": email,
-            "document_number": document_number,
-            "birthdate_from": birthdate_from,
-            "birthdate_to": birthdate_to,
+            "status_enumerators": query_params.getlist("status"),
+            "name": query_params.get("name"),
+            "email": query_params.get("email"),
+            "document_number": query_params.get("document_number"),
+            "birthdate_from": query_params.get("birthdate_from"),
+            "birthdate_to": query_params.get("birthdate_to"),
         }
 
         offset = page * limit
@@ -166,5 +177,5 @@ class SampleEntityResource:
 
         return JSONResponse(
             content=jsonable_encoder(page_envelope),
-            status_code=status.HTTP_200_OK,
+            status_code=http_status.HTTP_200_OK,
         )
