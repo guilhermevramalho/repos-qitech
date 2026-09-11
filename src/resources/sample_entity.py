@@ -1,4 +1,6 @@
 from fastapi import Query, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 from controllers import SampleEntityController
 from utils.schema_handler import SchemaHandler
@@ -50,42 +52,79 @@ class SampleEntityResource:
     fica aqui é de todo mundo.
 
     ────────────────────────────────────────────────────────────────
-    O STATUS DE SUCESSO É DECLARADO NO src/app.py
+    O STATUS DA RESPOSTA É DECIDIDO AQUI
     ────────────────────────────────────────────────────────────────
-    O 201 do POST, o 202 do PUT e o 200 do GET estão lá, na linha que
-    registra a rota — e não aqui. É um lugar só, e a lista inteira se
-    lê de uma vez.
+    201 pra criação, 202 pra "recebi e vou fazer", 204 pra "pronto e
+    não tenho nada a dizer", 200 pro resto. Todos saem destes métodos,
+    e é por isso que eles devolvem um `JSONResponse` em vez de um
+    dicionário solto: o dicionário sozinho não sabe dizer com que
+    status ele quer sair, e o FastAPI, sem essa informação, responde
+    200 pra tudo.
 
-    Os dois métodos que devolvem `Response(status_code=...)` — o
-    webhook aqui e o /health_check — não são exceção a isso: o
-    `Response` existe porque o FastAPI precisa dele pra mandar uma
-    resposta SEM CORPO, que é o que 204 quer dizer. Quem declara o
-    status continua sendo o app.py.
+    É o mesmo desenho dos serviços da QI. No Falcon o resource escreve
+    `resp.status = falcon.code_to_http_status(201)` na última linha;
+    aqui ele devolve a resposta já com o número dentro. Muda a
+    escrita, não o dono.
+
+    O `src/app.py` fica só com a tabela de endereços — ele diz QUEM
+    atende cada rota, nunca COMO a resposta sai. Um lugar, uma
+    decisão: se a resposta do POST deixar de ser 201 um dia, este
+    arquivo é o único que muda.
+
+    ────────────────────────────────────────────────────────────────
+    POR QUE O `jsonable_encoder`
+    ────────────────────────────────────────────────────────────────
+    Quando a rota devolve um dicionário, o FastAPI passa esse
+    dicionário por um tradutor antes de virar JSON — é ele que sabe
+    transformar uma data, um Decimal ou um UUID em texto. Devolvendo
+    o `JSONResponse` na mão, esse passo não acontece sozinho: sem a
+    chamada, o dia em que alguém acrescentar uma data no DTO a
+    resposta estoura em runtime, e só naquele endpoint.
     """
 
     @SchemaHandler.validate("post_sample_entity.json")
-    def on_post(self, payload: dict) -> dict:
+    def on_post(self, payload: dict) -> JSONResponse:
         # Se o código chegou até aqui, o payload JÁ foi conferido contra
         # o src/schemas/post_sample_entity.json. O resource não checa
         # nada: ele só chama a regra de negócio.
         controller = SampleEntityController()
-        return controller.create(payload)
+        sample_entity = controller.create(payload)
 
-    def on_get_by_key(self, sample_entity_key: str) -> dict:
+        return JSONResponse(
+            content=jsonable_encoder(sample_entity),
+            status_code=status.HTTP_201_CREATED,
+        )
+
+    def on_get_by_key(self, sample_entity_key: str) -> JSONResponse:
         controller = SampleEntityController()
-        return controller.get_by_key(sample_entity_key)
+        sample_entity = controller.get_by_key(sample_entity_key)
+
+        return JSONResponse(
+            content=jsonable_encoder(sample_entity),
+            status_code=status.HTTP_200_OK,
+        )
 
     @SchemaHandler.validate("put_sample_entity.json")
-    def on_put_by_key(self, sample_entity_key: str, payload: dict) -> dict:
+    def on_put_by_key(self, sample_entity_key: str, payload: dict) -> JSONResponse:
         controller = SampleEntityController()
-        return controller.update_status(sample_entity_key, payload["status"])
+        sample_entity = controller.update_status(sample_entity_key, payload["status"])
 
-    def on_post_process(self, sample_entity_key: str) -> dict:
+        return JSONResponse(
+            content=jsonable_encoder(sample_entity),
+            status_code=status.HTTP_202_ACCEPTED,
+        )
+
+    def on_post_process(self, sample_entity_key: str) -> JSONResponse:
         # 202, e não 201 nem 200: "recebi seu pedido e vou fazer", não
         # "está feito". Quando esta linha responde, o trabalho ainda não
         # aconteceu — ele está num recado na fila, esperando o consumer.
         controller = SampleEntityController()
-        return controller.request_processing(sample_entity_key)
+        sample_entity = controller.request_processing(sample_entity_key)
+
+        return JSONResponse(
+            content=jsonable_encoder(sample_entity),
+            status_code=status.HTTP_202_ACCEPTED,
+        )
 
     def on_put_increment_counter(self, sample_entity_key: str) -> Response:
         controller = SampleEntityController()
@@ -97,7 +136,7 @@ class SampleEntityResource:
         limit: int = Query(default=10, ge=0, le=100),
         page: int = Query(default=0, ge=0),
         status_filter: str = Query(default=None, alias="status"),
-    ) -> dict:
+    ) -> JSONResponse:
         controller = SampleEntityController()
 
         offset = page * limit
@@ -111,9 +150,14 @@ class SampleEntityResource:
         # deliberada: o envelope fala de limit e page, que são
         # vocabulário de HTTP. Empurrá-lo pro controller obrigaria a
         # regra de negócio a saber o que é uma página.
-        return {
+        page_envelope = {
             "data": sample_entities_page["sample_entities_list_dto"],
             "limit": limit,
             "page": page,
             "is_last_page": sample_entities_page["is_last_page"],
         }
+
+        return JSONResponse(
+            content=jsonable_encoder(page_envelope),
+            status_code=status.HTTP_200_OK,
+        )

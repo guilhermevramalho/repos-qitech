@@ -1,4 +1,4 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI
 
 from constants import check_variables
 from errors import register_error_handlers
@@ -110,6 +110,11 @@ def create_app() -> FastAPI:
     # é uma linha por ENDEREÇO. O FastAPI não faz essa descoberta, então
     # aqui é uma linha por endereço E verbo. Custa mais linhas; em troca,
     # não existe rota que atenda sem estar escrita nesta lista.
+    #
+    # Repare no que NÃO está escrito aqui: o status de cada resposta.
+    # 201, 202, 204 — todos saem de dentro do resource, que é quem sabe
+    # se a coisa foi criada, agendada ou concluída. Esta lista diz QUEM
+    # atende cada endereço, e mais nada.
     health_check_resource = HealthCheckResource()
     sample_entity_resource = SampleEntityResource()
 
@@ -117,45 +122,38 @@ def create_app() -> FastAPI:
     application.add_api_route(
         "/health_check",
         health_check_resource.on_get_health_check,
-        methods=["GET"],
-        status_code=status.HTTP_204_NO_CONTENT,
+        methods=["GET"]
     )
 
     application.add_api_route(
         "/sample_entity",
         sample_entity_resource.on_post,
         methods=["POST"],
-        status_code=status.HTTP_201_CREATED,
     )
     application.add_api_route(
         "/sample_entity/{sample_entity_key}",
         sample_entity_resource.on_get_by_key,
         methods=["GET"],
-        status_code=status.HTTP_200_OK,
     )
     application.add_api_route(
         "/sample_entity/{sample_entity_key}",
         sample_entity_resource.on_put_by_key,
         methods=["PUT"],
-        status_code=status.HTTP_202_ACCEPTED,
     )
     application.add_api_route(
         "/sample_entity/{sample_entity_key}/process",
         sample_entity_resource.on_post_process,
         methods=["POST"],
-        status_code=status.HTTP_202_ACCEPTED,
     )
     application.add_api_route(
         "/webhook/sample_entity/{sample_entity_key}/increment_counter",
         sample_entity_resource.on_put_increment_counter,
         methods=["PUT"],
-        status_code=status.HTTP_204_NO_CONTENT,
     )
     application.add_api_route(
         "/sample_entities",
         sample_entity_resource.on_get_list,
         methods=["GET"],
-        status_code=status.HTTP_200_OK,
     )
 
     register_error_handlers(application)
