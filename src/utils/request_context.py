@@ -17,7 +17,7 @@ REQUEST_ID_HEADER = "X-Request-ID"
 SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
 # Quando não há requisição nenhuma acontecendo — a API subindo, ou o
-# consumer trabalhando numa mensagem da fila — o log escreve isto no
+# aplicação subindo, por exemplo — o log escreve isto no
 # lugar do identificador.
 NO_REQUEST_ID = "-"
 

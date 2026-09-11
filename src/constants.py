@@ -14,22 +14,6 @@ SERVICE_NAME = os.environ.get("SERVICE_NAME", "bootcamp-api")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN")
 
-# A fila. Na QI Tech a fila de verdade é o SQS, da Amazon; aqui na sua
-# máquina quem faz o papel dele é o localstack — um programa que imita
-# os serviços da Amazon localmente, e que sobe junto no docker compose.
-#
-# O código que usa a fila não sabe a diferença, e esse é o ponto: muda o
-# endereço (o SQS_ENDPOINT_URL), o resto continua igual.
-AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-SQS_ENDPOINT_URL = os.environ.get("SQS_ENDPOINT_URL", "http://localstack:4566")
-SAMPLE_ENTITY_QUEUE_NAME = os.environ.get("SAMPLE_ENTITY_QUEUE_NAME", "sample-entity-processing")
-
-# A Amazon exige um par de chaves em toda chamada, e o localstack também
-# — mas ele não confere o valor. Por isso aqui elas são "test": não existe
-# conta da Amazon nenhuma neste projeto, e não há o que vazar.
-AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "test")
-AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "test")
-
 # A API de boletos: o serviço de fora que este projeto chama pra emitir
 # uma cobrança (veja src/connectors/). O endereço vem do ambiente, como
 # tudo aqui — na sua máquina ele aponta pro mock server do sábado 4; em

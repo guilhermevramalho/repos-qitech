@@ -46,14 +46,14 @@ O QUE ISSO CUSTA — três coisas, e nenhuma é de graça
 ────────────────────────────────────────────────────────────────────
 • **A sessão virou ambiente.** Antes, a assinatura da rota dizia em voz
   alta "eu uso banco". Agora a sessão está no ar, e qualquer código, em
-  qualquer camada, alcança o banco chamando `get_session()` — inclusive
+  qualquer camada, alcança o banco chamando `get_context()` — inclusive
   um DTO, que não deveria. Isso é uma perda real de legibilidade, e não
   há como impedir por código: o combinado é que **só o controller
-  chama `get_session()`**, e é curto de propósito, pra caber na cabeça.
+  chama `get_context()`**, e é curto de propósito, pra caber na cabeça.
 
 • **Duas peças precisam concordar.** Quem prepara o contexto é o
-  middleware (numa requisição) ou o consumer (numa mensagem). Se um dos
-  dois não rodar, o `get_session` levanta. Isto aqui MELHOROU em relação
+  middleware, no começo de cada requisição. Se ele não rodar, o
+  `get_context` levanta. Isto aqui MELHOROU em relação
   ao desenho anterior, que quebrava com um `AttributeError` seco longe
   do crime: agora a mensagem diz qual peça faltou e onde ela mora.
 
@@ -107,8 +107,17 @@ engine = create_engine(DATABASE_URL, pool_size=5, pool_recycle=600, pool_pre_pin
 SessionLocal = sessionmaker(bind=engine, autoflush=False)
 
 
-class SessionHolder:
-    """O balcão de um trabalho: começa vazio, e só abre a sessão se pedirem.
+class Context:
+    """O contexto de um trabalho: o que vale pra esta requisição, e só pra ela.
+
+    Hoje ele carrega uma coisa só — a sessão de banco. É o mesmo objeto
+    que existe nos serviços da QI (lá em `utils/context.py`), e lá ele
+    carrega mais: o identificador da requisição, o corpo cru, o tempo.
+    Neste projeto o identificador ainda viaja por conta própria, em
+    src/utils/request_context.py; juntar os dois é o próximo passo
+    natural, e não foi dado ainda.
+
+    Começa vazio e só abre a sessão se pedirem.
 
     Por que um objeto, e não a sessão guardada direto no contexto? Porque
     o contexto só viaja num sentido. Quem cria a task filha (o middleware)
@@ -129,75 +138,76 @@ class SessionHolder:
     Guardando um objeto MUTÁVEL, as duas pontas olham o MESMO balcão: a
     rota mexe no atributo, o middleware lê o atributo. É o mesmo mecanismo
     do `request.state` de antes — um saco compartilhado —, só que este
-    também serve a quem não tem requisição nenhuma, como o consumer.
+    também serviria a quem não tem requisição nenhuma.
     """
 
     def __init__(self) -> None:
-        self.session: Optional[Session] = None
+        self.db_session: Optional[Session] = None
 
     def get_or_create_session(self) -> Session:
-        if self.session is None:
-            self.session = SessionLocal()
+        if self.db_session is None:
+            self.db_session = SessionLocal()
 
-        return self.session
-
-
-_session_holder: ContextVar[Optional[SessionHolder]] = ContextVar("db_session_holder", default=None)
+        return self.db_session
 
 
-def open_session_context() -> SessionHolder:
+_context: ContextVar[Optional[Context]] = ContextVar("context", default=None)
+
+
+def open_context() -> Context:
     """Prepara o lugar da sessão deste trabalho e devolve o balcão.
 
-    Chamada em DOIS lugares, e só nestes dois:
-
-      • src/middlewares/session_manager.py, no começo de cada requisição;
-      • src/consumer.py, no começo de cada mensagem da fila.
-
-    São os dois pontos de entrada da aplicação — os dois lugares onde um
-    trabalho começa. Quem chama isto é quem também vai fechar a sessão no
-    fim; abrir sem fechar é vazar conexão.
+    Chamada num lugar só: src/middlewares/session_manager.py, no começo
+    de cada requisição. É o ponto de entrada da aplicação — o lugar onde
+    um trabalho começa. Quem chama isto é quem também vai fechar a sessão
+    no fim; abrir sem fechar é vazar conexão.
     """
-    holder = SessionHolder()
-    _session_holder.set(holder)
+    context = Context()
+    _context.set(context)
 
-    return holder
+    return context
 
 
-def clear_session_context() -> None:
-    """Tira o balcão do contexto. Chamada pelos mesmos dois lugares, no fim.
+def clear_context() -> None:
+    """Tira o contexto de circulação. Chamada pelos mesmos dois lugares, no fim.
 
-    Sem esta linha, fora de um trabalho o `get_session` devolveria o balcão
+    Sem esta linha, fora de um trabalho o `get_context` devolveria o contexto
     do trabalho ANTERIOR, com a sessão já fechada. E sessão fechada do
     SQLAlchemy não reclama: ela reabre sozinha na próxima query, tomando
     uma conexão que ninguém mais fecharia.
 
     Na API isso quase não apareceria — cada requisição chega num contexto
-    novo. No consumer, que é um processo só num laço eterno, apareceria
-    sempre.
+    novo. Num programa de laço eterno, que pegasse um trabalho atrás do
+    outro no mesmo processo, apareceria sempre.
     """
-    _session_holder.set(None)
+    _context.set(None)
 
 
-def get_session() -> Session:
-    """Devolve a sessão deste trabalho, abrindo-a se ninguém pediu ainda.
+def get_context() -> Context:
+    """Devolve o contexto deste trabalho.
 
     Quem chama é o BaseController, ao ser construído. É esta função que
     substituiu o `db: Session = Depends(get_db)` que ficava na assinatura
     de cada rota.
 
-    O `if` lá do `get_or_create_session` é a preguiça de sempre: a sessão só nasce
-    quando alguém pede. Rota que não constrói controller nenhum — o `/` e
-    o /health_check — não chega aqui, e por isso não depende do banco
-    estar de pé.
-    """
-    holder = _session_holder.get()
+    Ele devolve o CONTEXTO, não a sessão — e essa diferença é o motivo de
+    o repository receber `context` e não `db`. Quem precisa do banco pede
+    a sessão ao contexto (`context.db_session`); quem precisar de outra
+    coisa que passe a viajar aqui dentro amanhã pede sem que nenhuma
+    assinatura mude no caminho.
 
-    if holder is None:
+    A sessão continua preguiçosa: ela nasce no `get_or_create_session`,
+    que o BaseController chama. Rota que não constrói controller nenhum —
+    o `/` e o /health_check — não chega aqui, e por isso não depende do
+    banco estar de pé.
+    """
+    context = _context.get()
+
+    if context is None:
         raise Exception(
-            "Nao existe sessao de banco neste contexto. "
-            + "Quem prepara o contexto de uma requisicao e o middleware "
-            + "src/middlewares/session_manager.py; quem prepara o de uma mensagem da fila "
-            + "e o src/consumer.py. Se voce chegou aqui, um dos dois nao rodou."
+            "Nao existe contexto neste trabalho. "
+            + "Quem prepara o contexto de cada requisicao e o middleware "
+            + "src/middlewares/session_manager.py. Se voce chegou aqui, ele nao rodou."
         )
 
-    return holder.get_or_create_session()
+    return context

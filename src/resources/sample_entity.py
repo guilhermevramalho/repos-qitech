@@ -48,7 +48,7 @@ class SampleEntityResource:
     ser compartilhado por TODAS as requisições ao mesmo tempo — e o
     sintoma é uma resposta levando o dado de outra pessoa, sob carga,
     sem erro nenhum no log. O que é de uma requisição fica no
-    contexto dela (veja o `get_session` em src/database.py); o que
+    contexto dela (veja o `get_context` em src/database.py); o que
     fica aqui é de todo mundo.
 
     ────────────────────────────────────────────────────────────────
@@ -108,18 +108,6 @@ class SampleEntityResource:
     def on_put_by_key(self, sample_entity_key: str, payload: dict) -> JSONResponse:
         controller = SampleEntityController()
         sample_entity = controller.update_status(sample_entity_key, payload["status"])
-
-        return JSONResponse(
-            content=jsonable_encoder(sample_entity),
-            status_code=status.HTTP_202_ACCEPTED,
-        )
-
-    def on_post_process(self, sample_entity_key: str) -> JSONResponse:
-        # 202, e não 201 nem 200: "recebi seu pedido e vou fazer", não
-        # "está feito". Quando esta linha responde, o trabalho ainda não
-        # aconteceu — ele está num recado na fila, esperando o consumer.
-        controller = SampleEntityController()
-        sample_entity = controller.request_processing(sample_entity_key)
 
         return JSONResponse(
             content=jsonable_encoder(sample_entity),

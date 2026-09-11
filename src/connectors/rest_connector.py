@@ -11,7 +11,7 @@ class RestConnector(metaclass=ABCMeta):
     """O que todo connector tem em comum: como falar com outro serviço.
 
     Este arquivo é pra chamada HTTP o que o database.py é pro banco e o
-    sqs.py é pra fila: o ÚNICO lugar que sabe COMO se fala com um serviço
+    o ÚNICO lugar que sabe COMO se fala com um serviço
     de fora. Quem precisa de outro serviço não escreve requests.get() no
     meio do código — cria um connector (veja o bankslip_connector.py) e
     chama um método com nome de gente.

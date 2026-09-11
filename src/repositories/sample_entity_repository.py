@@ -1,8 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy.orm import Session
-
+from database import Context
 from models import SampleEntity, SampleEntityStatus, SampleEntityStatusEvent
 
 
@@ -11,10 +10,20 @@ class SampleEntityRepository:
 
     Nenhuma regra de negócio mora aqui: esta classe busca, guarda e
     atualiza — quem decide o que fazer com isso é o controller.
+
+    Repare no que ele recebe: o CONTEXTO do trabalho, e não a sessão
+    solta. A sessão é o que ele tira de lá na linha seguinte, e é tudo de
+    que precisa hoje — mas a assinatura já fala a língua do que viaja
+    entre as camadas. No dia em que o contexto carregar também o
+    identificador da requisição, nenhum construtor daqui até o resource
+    muda de forma.
+
+    É assim nos serviços da QI, e a linha é a mesma lá e aqui:
+    `self.session = context.db_session`.
     """
 
-    def __init__(self, db: Session) -> None:
-        self.session = db
+    def __init__(self, context: Context) -> None:
+        self.session = context.db_session
 
     def create(self, sample_entity_data: dict) -> SampleEntity:
         sample_entity = SampleEntity()

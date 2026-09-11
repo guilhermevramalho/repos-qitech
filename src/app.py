@@ -11,7 +11,6 @@ from middlewares import (
     register_session_manager_middleware,
 )
 from resources import HealthCheckResource, SampleEntityResource
-from sqs import create_queue
 from utils.logger import setup_logging
 
 
@@ -141,11 +140,6 @@ def create_app() -> FastAPI:
         methods=["PUT"],
     )
     application.add_api_route(
-        "/sample_entity/{sample_entity_key}/process",
-        sample_entity_resource.on_post_process,
-        methods=["POST"],
-    )
-    application.add_api_route(
         "/webhook/sample_entity/{sample_entity_key}/increment_counter",
         sample_entity_resource.on_put_increment_counter,
         methods=["PUT"],
@@ -167,12 +161,6 @@ def main() -> FastAPI:
     check_variables()
     error_verification()
     setup_logging()
-
-    # Garante que a fila existe antes da primeira requisição chegar. O
-    # consumer faz a mesma chamada quando sobe: criar fila que já existe
-    # não dá erro, e assim nenhum dos dois depende do outro ter subido
-    # primeiro — nem de você rodar comando nenhum na mão.
-    create_queue()
 
     return create_app()
 

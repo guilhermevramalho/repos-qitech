@@ -34,16 +34,6 @@ services:
       # A senha que protege os endpoints internos. O padrao vale pra
       # estudar; num sistema de verdade, isso nunca teria valor padrao.
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
-      # Onde esta a fila. Mesma historia do banco: aqui dentro o
-      # localstack atende pelo nome "localstack", nunca por localhost.
-      SQS_ENDPOINT_URL: http://localstack:4566
-      # A Amazon exige chave em toda chamada; o localstack aceita
-      # qualquer uma. Estas sao de mentirinha, e e por isso que este
-      # projeto roda sem voce ter conta na Amazon.
-      AWS_REGION: ${AWS_REGION:-us-east-1}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
-      SAMPLE_ENTITY_QUEUE_NAME: ${SAMPLE_ENTITY_QUEUE_NAME:-sample-entity-processing}
     volumes:
       # Monta o codigo pra dentro do container: salvou o arquivo,
       # a API recarrega sozinha (o --reload ali embaixo).
@@ -62,40 +52,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      localstack:
-        condition: service_healthy
-
-  # O consumer: o segundo programa deste projeto. Nao atende requisicao
-  # nenhuma e nao tem porta — ele so olha a fila e trabalha no que
-  # encontra. Sobe junto com o "docker compose up", como a API.
-  #
-  # Pra ver o que ele esta fazendo:  docker compose logs -f consumer
-  consumer:
-    build:
-      context: .
-      target: consumer
-    environment:
-      DATABASE_URL: postgresql+psycopg2://bootcamp:bootcamp@db:5432/bootcamp
-      APP_ENV: ${APP_ENV:-local}
-      SERVICE_NAME: ${SERVICE_NAME:-bootcamp-consumer}
-      # O consumer nao atende requisicao, mas o INTERNAL_TOKEN e exigido
-      # no start (a checagem em src/constants.py vale pros dois programas).
-      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-default_token}
-      SQS_ENDPOINT_URL: http://localstack:4566
-      AWS_REGION: ${AWS_REGION:-us-east-1}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
-      SAMPLE_ENTITY_QUEUE_NAME: ${SAMPLE_ENTITY_QUEUE_NAME:-sample-entity-processing}
-    volumes:
-      # Mesmo codigo montado da mesma forma. Diferenca: o consumer nao
-      # recarrega sozinho — depois de editar, reinicie com
-      # "docker compose restart consumer".
-      - ./src:/app
-    depends_on:
-      db:
-        condition: service_healthy
-      localstack:
-        condition: service_healthy
 
   db:
     build: ./database/.
@@ -112,28 +68,6 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
-
-  # A fila. Na QI Tech, em producao, isto e o SQS da Amazon; aqui e o
-  # localstack, que imita os servicos dela dentro do seu Docker. O codigo
-  # da aplicacao nao muda: muda o endereco pra onde ele fala.
-  #
-  # Nao precisa de conta na Amazon, nem de cartao, nem de internet depois
-  # que a imagem baixou.
-  localstack:
-    image: localstack/localstack:3.0.2
-    environment:
-      # So o SQS. O localstack sabe imitar dezenas de servicos da Amazon,
-      # e ligar todos custaria memoria da sua maquina por nada.
-      SERVICES: sqs
-    healthcheck:
-      # "O container subiu" nao e "o SQS ja responde". Este comando fala
-      # com o SQS de verdade — e a API e o consumer so sobem depois que
-      # ele responder, senao a primeira chamada deles morreria.
-      test: ["CMD-SHELL", "awslocal sqs list-queues"]
-      interval: 3s
-      timeout: 5s
-      retries: 30
-      start_period: 10s
 
   # Os testes rodam DENTRO do Docker, num container que ja tem Python e
   # pytest instalados. Voce nao precisa de nada disso na sua maquina:
@@ -170,8 +104,3 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      # O teste do fluxo assincrono manda um pedido pra API e espera o
-      # resultado aparecer. Sem alguem consumindo a fila, ele esperaria
-      # pra sempre — por isso o consumer precisa estar no ar tambem.
-      consumer:
-        condition: service_started

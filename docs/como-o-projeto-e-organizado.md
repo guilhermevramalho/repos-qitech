@@ -90,7 +90,7 @@ explode no meio. Duas perguntas diferentes, então:
 - **Quem cuida do ciclo de vida?** `src/middlewares/session_manager.py`.
   Abre, desfaz se deu errado, fecha sempre — e **nunca salva**.
 - **Quem pede a sessão?** O controller, ao ser construído. O
-  `BaseController` chama o `get_session()` de `src/database.py`, e é só
+  `BaseController` chama o `get_context()` de `src/database.py`, e é só
   isso: a rota não escreve nada sobre banco.
 
 **O resource não fala de banco, de propósito.** Abra `src/resources/` e repare
@@ -108,10 +108,10 @@ consegue *entregar* um objeto para quem vem depois, mas consegue
 
 **O combinado que isso exige.** Sessão no contexto é sessão no ar:
 qualquer código, em qualquer camada, alcança o banco chamando
-`get_session()`. Nada impede um DTO de fazer isso — nada além do
+`get_context()`. Nada impede um DTO de fazer isso — nada além do
 combinado, que é curto justamente pra caber na cabeça:
 
-> **Quem chama `get_session()` é o controller, e mais ninguém.**
+> **Quem chama `get_context()` é o controller, e mais ninguém.**
 
 **Por que o ciclo virou middleware.** Dava para deixar tudo numa
 *dependency* do FastAPI — e por um tempo foi assim. O motivo da troca
@@ -218,7 +218,7 @@ schema num arquivo versionado em vez de deixá-lo só dentro do banco.
 **Mexeu numa dependência e o `docker compose build` passou?** Ele passa
 mesmo — sem ter construído os testes uma única vez. O serviço `tests`
 tem `profiles: ["test"]` no `docker-compose.yml`, e é isso que o mantém
-fora do build padrão: o comando monta a API e o consumer, termina com
+fora do build padrão: o comando monta a API, termina com
 sucesso, e você fica com a impressão de que está tudo de pé. O
 `docker compose run --rm tests` seguinte também não desmente — ele
 reaproveita a imagem de teste que já existe na sua máquina, mesmo que
